@@ -1,6 +1,8 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
+import copy from "esbuild-plugin-copy";
+import clean from "esbuild-plugin-clean";
 
 const banner =
 `/*
@@ -9,41 +11,68 @@ if you want to view the source, please visit the github repository of this plugi
 */
 `;
 
-const prod = (process.argv[2] === "production");
+const prod = process.argv[2] === "production";
 
 const context = await esbuild.context({
-	banner: {
-		js: banner,
-	},
-	entryPoints: ["main.ts"],
-	bundle: true,
-	external: [
-		"obsidian",
-		"electron",
-		"@codemirror/autocomplete",
-		"@codemirror/collab",
-		"@codemirror/commands",
-		"@codemirror/language",
-		"@codemirror/lint",
-		"@codemirror/search",
-		"@codemirror/state",
-		"@codemirror/view",
-		"@lezer/common",
-		"@lezer/highlight",
-		"@lezer/lr",
-		...builtins],
-	format: "cjs",
-	target: "es2018",
-	logLevel: "info",
-	sourcemap: prod ? false : "inline",
-	treeShaking: true,
-	outfile: "main.js",
-	minify: prod,
+    banner: {
+        js: banner,
+    },
+    entryPoints: ["src/main.ts"],
+    bundle: true,
+    external: [
+        "obsidian",
+        "electron",
+        "@codemirror/autocomplete",
+        "@codemirror/collab",
+        "@codemirror/commands",
+        "@codemirror/language",
+        "@codemirror/lint",
+        "@codemirror/search",
+        "@codemirror/state",
+        "@codemirror/view",
+        "@lezer/common",
+        "@lezer/highlight",
+        "@lezer/lr",
+        ...builtins
+    ],
+    format: "cjs",
+    target: "es2018",
+    logLevel: "info",
+    sourcemap: prod ? false : "inline",
+    treeShaking: true,
+    minify: prod,
+    outdir: "dist",
+    plugins: [
+        clean({
+            patterns: ["./dist/*"],
+        }),
+        copy({
+            assets: [
+                { 
+                    from: "./styles.css", 
+                    to: "./styles.css" 
+                },
+                { 
+                    from: "./manifest.json", 
+                    to: "./manifest.json" 
+                },
+            ],
+			watch: true,
+        }),
+    ],
 });
 
-if (prod) {
-	await context.rebuild();
-	process.exit(0);
-} else {
-	await context.watch();
+try {
+    if (prod) {
+        const result = await context.rebuild(); 
+        console.log("Build succeeded:", result);
+        await context.dispose(); 
+        process.exit(0);
+    } else {
+        console.log("✨ Development build succeeded. Watching for changes...");
+        await context.watch(); 
+    }
+} catch (error) {
+    console.error("❌ Build failed:", error);
+    process.exit(1);
 }
