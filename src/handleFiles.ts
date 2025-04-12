@@ -1,5 +1,5 @@
 import { App, normalizePath, TAbstractFile, TFile, TFolder, Vault } from "obsidian";
-import { AutoNoteMoverSettings, ExcludedFolder } from "./settings";
+import { ExcludedFolder as ExcludedFolderRule, NoteMoverSettings, Rule } from "./settings";
 import { getAPI, DataviewApi } from "obsidian-dataview";
 
 export type FileCheckFn = (path: string) => TAbstractFile | null;
@@ -7,137 +7,131 @@ export type RenameFileFn = (file: TFile, newPath: string) => Promise<void>
 export type Caller = 'cmd' | 'auto';
 
 
-export async function handleFiles(app: App, file: TAbstractFile, сaller: Caller, excludedFolder: ExcludedFolder[], useRegexForExcludedFolders: boolean, oldPath?: string,){
-    //TODO добавить в настройки триггер
-    //TODO проверка this.settings.trigger_auto_manual !== 'Automatic' && caller !== 'cmd'
-   
+export async function handleFiles(app: App, file: TAbstractFile, сaller: Caller, settings: NoteMoverSettings, oldPath?: string,) {
+    //TODO Автоматический режим активации - добавить в настройки триггер
+    //проверка this.settings.trigger_auto_manual !== 'Automatic' && caller !== 'cmd'
+
     if (!(file instanceof TFile)) return;
 
-    const fileName = file.basename;
-    const fileFullName = createFullName(file);
+    console.log(`start move file:${file.name}`);
+
+    const fileName = file.basename; // fileName
+    const fileFullName = createFullName(file); // fileName.extention
 
     if (oldPath && !shouldProcessRename(fileFullName, oldPath)) {
         return;
     }
 
-    if (isFileInExcludedFolder(file, excludedFolder, useRegexForExcludedFolders)) {
+    if (isFileInExcludedFolder(file, settings.excludedFolders)) {
         return;
     }
-
-    //TODO get file path from rules
-    const settingFolder: string = "Target Folder"
-
-    // Normalize paths once at the start
-    const targetPath = normalizePath(`${settingFolder}/${fileFullName}`);
-    const currentPath = normalizePath(file.path);
-    
-    const rule = `
-    LIST
-    FROM "${currentPath}"
-    WHERE fileClass = "External"`; // TODO заменить where
-
-    const dataviewApi: DataviewApi = getAPI(app) as DataviewApi;
-
-    const isFileFollowsRule = FileFollowsRule(dataviewApi, rule)
-    if(!isFileFollowsRule)
-        return false;
-    
-
 
     const getAbstractFileFn: FileCheckFn = (path: string) => app.vault.getAbstractFileByPath(normalizePath(path))
-    const renameFileFn: RenameFileFn = async (oldName, newName) => app.fileManager.renameFile(oldName, newName);
+    const renameFileFn: RenameFileFn = async (oldName, newName) => app.fileManager.renameFile(oldName, newName); // TODO написакть почему именно его а не move
+    const dataviewApi: DataviewApi = getAPI(app) as DataviewApi;
 
-    if (AlreadyInTargetFolder(currentPath, targetPath)) {
-        return;
+    console.log(`check rules for file:${file.name}`);
+    for (const rule of settings.rules) {
+
+        const currentPath = normalizePath(file.path);
+        const targetPath = normalizePath(`${rule.targetFolder}/${fileFullName}`);
+
+        const parentFolder = file.parent!; // TODO root folder как обабатывать???
+
+        if (!FileInSourceFolder(parentFolder.path, rule.sourceFolder)) { //TODO рекурсивно???
+            continue;
+        }
+
+        const isFileFollowsRule = FileFollowsRule(dataviewApi, rule, currentPath)
+
+        if (!isFileFollowsRule)
+            continue;
+
+        if (AlreadyInTargetFolder(currentPath, targetPath)) {
+            continue;
+        }
+
+        const existingFile = getAbstractFileFn(targetPath);
+        if (existingFile instanceof TFile) {
+            const errorMsg = `[Auto Note Mover] Error: A file with the same name "${fileFullName}" exists at the destination folder.`;
+            console.error(errorMsg);
+            continue;
+        }
+
+        try {
+            await renameFileFn(file, targetPath);
+            const successMsg = `[Auto Note Mover] Moved the note "${fileFullName}" to "${rule.targetFolder}".`;
+            console.log(successMsg);
+        } catch (error) {
+            console.error(`[Auto Note Mover] Failed to move file: ${error}`);
+        }
     }
-
-    // Check for existing file at destination
-    const existingFile = getAbstractFileFn(targetPath);
-    if (existingFile instanceof TFile) {
-        const errorMsg = `[Auto Note Mover] Error: A file with the same name "${fileFullName}" exists at the destination folder.`;
-        console.error(errorMsg);
-        return;
-    }
-
-    try {
-        await renameFileFn(file, targetPath);
-        const successMsg = `[Auto Note Mover] Moved the note "${fileFullName}" to "${settingFolder}".`;
-        console.log(successMsg);
-    } catch (error) {
-        console.error(`[Auto Note Mover] Failed to move file: ${error}`);
-    }
-
 }
 
+function FileInSourceFolder(parentFolderPath: string, sourceFolderPath: string) {
+    return parentFolderPath === sourceFolderPath;
+}
 
-async function FileFollowsRule(dataviewApi: DataviewApi, rule:string){
+async function FileFollowsRule(dataviewApi: DataviewApi, rule: Rule, fullFilePath: string) {
 
-    const query = rule;
+
+    // TODO как это будет работать с другими file.extention?
+    // Alternative WHERE file.path (with .extention)
+    let query = `
+    LIST
+    FROM "${fullFilePath}"
+    WHERE ${rule.filter}`;
 
     try {
-        // Выполняем запрос [[3]][[7]]
         const result = await dataviewApi.tryQuery(query, this.app.workspace.getActiveFile()?.path);
-        
-        // Обрабатываем результат для LIST-запроса [[10]]
-        if (result.type === 'list') {
-            //@ts-ignore
-            result.values.forEach(item => {
-                //@ts-ignore
-                console.log("Found item:", item.value);
-                // Здесь можно добавить отображение элементов в интерфейсе
-            });
-            if(result.value.length() !== 1)
-                throw new Error("Problem with query in dataviewApi");
-
-            return true
+        if (result.values.length > 1) {
+            throw new Error("Only one element is expected as a result of the query execution.");
         }
+        return result.values === 1;
+
     } catch (error) {
         console.error("Dataview query error:", error);
         throw error;
     }
-
-    return false;
 }
 
-function AlreadyInTargetFolder(currentPath:string, targetPath:string,){
+
+function AlreadyInTargetFolder(currentPath: string, targetPath: string,) {
     return currentPath === targetPath;
 }
 
 function isFileInExcludedFolder(
     file: TFile,
-    excludedFolders: ExcludedFolder[],
-    useRegexForExcludedFolders: boolean
-): boolean {
+    excludedFolders: ExcludedFolderRule[],
+  ): boolean {
+    if (!file.parent) return false;
+  
+    const normalizedFileFolder = normalizePath(file.parent.path);
+  
     return excludedFolders.some(excluded => {
-        if (!excluded.folder) return false;
-        if (!file.parent) return false; //TODO проверить что работает.
-        
-        const folderPath = file.parent.path;
-        const excludedPath = excluded.folder;
-        
-        if (useRegexForExcludedFolders) {
-            try {
-                const regex = new RegExp(excludedPath);
-                return regex.test(folderPath);
-            } catch (e) {
-                console.error(`Invalid regex pattern: ${excludedPath}`, e);
-                return false;
-            }
-        }
-        
-        return normalizePath(excludedPath) === folderPath;
+      if (!excluded.folderPath) return false;
+  
+      const normalizedExcludedFolder = normalizePath(excluded.folderPath);
+  
+      if (excluded.withSubfolders) {
+        return normalizedFileFolder === normalizedExcludedFolder ||
+               normalizedFileFolder.startsWith(normalizedExcludedFolder);
+      }
+  
+      return normalizedFileFolder === normalizedExcludedFolder;
     });
-}
+  }
+  
 
-function shouldProcessRename(newFilename:string, oldPath?: string) {
+function shouldProcessRename(newFilename: string, oldPath?: string) {
     if (!oldPath) return false;
-    
+
     const oldFilename = oldPath.split('/').pop();
 
     return oldFilename !== newFilename;
 }
 
-function createFullName(file: TFile){
+function createFullName(file: TFile) {
     return `${file.basename}.${file.extension}`
 }
 

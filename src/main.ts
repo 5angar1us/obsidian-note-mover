@@ -1,13 +1,7 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import { handleFiles } from './handleFiles';
+import { DEFAULT_SETTINGS, NoteMoverSettings, NoteMoverSettingTab } from './settings';
 
-export interface NoteMoverSettings {
-	mySetting: string;
-}
-
-const DEFAULT_SETTINGS: NoteMoverSettings = {
-	mySetting: 'default'
-}
 
 export default class NoteMover extends Plugin {
 	settings: NoteMoverSettings;
@@ -15,21 +9,20 @@ export default class NoteMover extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
-		this.addCommand({
-			id: 'run command 1',
-			name: 'run command 1',
-			callback: () => {
+		const moveAllNotesCommand = async () => {
+			const files = this.app.vault.getMarkdownFiles();
+			const filesLength = files.length;
+			for (let i = 0; i < filesLength; i++) {
+				await handleFiles(this.app, files[i], 'cmd', this.settings);
+			}
+			new Notice(`All ${filesLength} notes have been moved.`);
+		};
 
-				const file = this.app.vault.getFiles()[0];
-				console.log(`file:${file.name}`);
-				handleFiles(
-					this.app,
-					file,
-					'cmd',
-					[],
-					false
-				)
-				console.log("Message: Hello world")
+		this.addCommand({
+			id: 'Move-all-notes',
+			name: 'Move all notes',
+			callback: async () => {
+				await moveAllNotesCommand();
 			},
 		});
 		this.addSettingTab(new NoteMoverSettingTab(this.app, this));
@@ -50,30 +43,5 @@ export default class NoteMover extends Plugin {
 }
 
 
-export class NoteMoverSettingTab extends PluginSettingTab {
-	plugin: NoteMover;
-
-	constructor(app: App, plugin: NoteMover) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
-
-	display(): void {
-		const { containerEl } = this;
-
-		containerEl.empty();
-
-		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
-	}
-}
 
 
