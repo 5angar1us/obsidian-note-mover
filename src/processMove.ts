@@ -1,7 +1,8 @@
-import { App, CachedMetadata, normalizePath, parseFrontMatterEntry, TAbstractFile, TFile, TFolder, Vault } from "obsidian";
-import { Caller, ExcludedFolder as ExcludedFolderRule, FileExcludedFrontMatterEntry, FileExcludedFrontMatterEntryName, getTypedValue, NoteMoverSettings, Rule, SourceFolder } from "./settings";
+import { App, normalizePath, parseFrontMatterEntry, TAbstractFile, TFile } from "obsidian";
+
 import { getAPI, DataviewApi } from "obsidian-dataview";
 import { log } from "./logger/CompositeLogger";
+import { Caller, ExcludedFolder, FileExcludedFrontMatterEntry, FileExcludedFrontMatterEntryName, getTypedValue, NoteMoverSettings, Rule, SourceFolder } from "./settings/settingsTypes";
 
 export type FileCheckFn = (path: string) => TAbstractFile | null;
 export type RenameFileFn = (file: TFile, newPath: string) => Promise<void>
@@ -123,7 +124,7 @@ function AlreadyInTargetFolder(currentPath: string, targetPath: string,) {
 
 function isFileInExcludedFolder(
     file: TFile,
-    excludedFolders: ExcludedFolderRule[],
+    excludedFolders: ExcludedFolder[],
 ): boolean {
     if (!file.parent) return false;
 

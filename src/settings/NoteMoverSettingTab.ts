@@ -1,47 +1,10 @@
 import { App, ButtonComponent, PluginSettingTab, Setting, TextComponent } from "obsidian";
-import NoteMover from "./main";
-import { arrayMove } from "./utilt";
-import { FolderSuggest2 } from "./suggests/folder-suggest2";
-import { FolderSuggest3 } from "./suggests/folder-suggest3";
+import NoteMover from "../main";
+import { arrayMove } from "../utilt";
+import { FolderSuggest2 } from "../suggests/folder-suggest2";
+import { FolderSuggest3 } from "../suggests/folder-suggest3";
+import { Caller, ExcludedFolder, FileExcludedFrontMatterEntry, FileExcludedFrontMatterEntryName, getTypedValue, NoteMoverSettings, Rule } from "./settingsTypes";
 
-export interface ExcludedFolder {
-	path: string;
-	withSubfolders: boolean
-}
-
-export interface SourceFolder {
-	path: string;
-	withSubfolders: boolean
-}
-
-export interface TargetFolder {
-	path: string;
-}
-
-export interface Rule {
-	sourceFolder: SourceFolder;
-	targetFolder: TargetFolder;
-	filter: string;
-}
-
-export interface NoteMoverSettings {
-	rules: Array<Rule>;
-	excludedFolders: Array<ExcludedFolder>,
-	trigger: Caller,
-	isDebug: boolean
-
-}
-export type Caller = 'cmd' | 'auto';
-const CALLER_OPTIONS: Record<Caller, string> = {
-	'cmd': 'Manual',
-	'auto': 'Automatic'
-};
-
-export const FileExcludedFrontMatterEntryName = 'NoteMover'
-export type FileExcludedFrontMatterEntry = 'disable' | "enable"
-export function getTypedValue<T>(value: T): string {
-	return String(value);
-}
 
 export const DEFAULT_SETTINGS: NoteMoverSettings = {
 	trigger: "auto",
@@ -49,6 +12,11 @@ export const DEFAULT_SETTINGS: NoteMoverSettings = {
 	excludedFolders: [],
 	isDebug: false
 }
+
+export const CALLER_OPTIONS: Record<Caller, string> = {
+    'cmd': 'Manual',
+    'auto': 'Automatic'
+};
 
 
 export class NoteMoverSettingTab extends PluginSettingTab {
@@ -143,7 +111,7 @@ export class NoteMoverSettingTab extends PluginSettingTab {
 					});
 			});
 
-		this.plugin.settings.excludedFolders.forEach((excluded_folder, index) => {
+		this.plugin.settings.excludedFolders.forEach((excluded_folder:ExcludedFolder, index:number) => {
 			const s = new Setting(this.containerEl)
 				.addSearch((cb) => {
 					new FolderSuggest3(cb.inputEl, this.app);
@@ -243,7 +211,7 @@ export class NoteMoverSettingTab extends PluginSettingTab {
 					});
 			});
 
-		this.plugin.settings.rules.forEach((rule, index) => {
+		this.plugin.settings.rules.forEach((rule:Rule, index:number) => {
 
 			const s = new Setting(this.containerEl)
 

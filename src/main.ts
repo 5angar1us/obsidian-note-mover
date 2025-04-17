@@ -1,11 +1,12 @@
 import { App, debounce, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
-import { processMove } from './handleFiles';
-import { DEFAULT_SETTINGS, NoteMoverSettings, NoteMoverSettingTab } from './settings';
+import { processMove } from './processMove';
+import { DEFAULT_SETTINGS, NoteMoverSettingTab } from './settings/NoteMoverSettingTab';
 import { log } from './logger/CompositeLogger';
 import { ErrorLevel } from './logger/consts/errorLevel';
 import { ConsoleErrorLogger } from './logger/ConsoleErrorLogger';
 import { GuiLogger } from './logger/GuiLogger';
 import { PromisePool } from './PromisePool/PromisePool';
+import { NoteMoverSettings } from './settings/settingsTypes';
 
 
 export default class NoteMover extends Plugin {
