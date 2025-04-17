@@ -1,5 +1,5 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import { handleFiles } from './handleFiles';
+import { App, debounce, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
 import { DEFAULT_SETTINGS, NoteMoverSettings, NoteMoverSettingTab } from './settings';
 import { log } from './logger/CompositeLogger';
 import { ErrorLevel } from './logger/consts/errorLevel';
@@ -69,6 +69,32 @@ export default class NoteMover extends Plugin {
 			  log.reportError(error, "Failed to process notes.", ErrorLevel.Error);
 			  throw error;
 			}
+		  };
+
+		  this.app.workspace.onLayoutReady(() => {
+			this.registerEvent(
+				this.app.vault.on('create', 
+					(file) => {
+						if (file instanceof TFile) { 
+							debounce(processMove, 200, true)(this.app, file, "auto", this.settings);
+						}
+					}
+				));
+			this.registerEvent(
+				this.app.metadataCache.on('changed', 
+					(file) => {
+						debounce(processMove, 200, true)(this.app, file, "auto", this.settings);
+					}
+				));
+			this.registerEvent(
+				this.app.vault.on('rename', 
+					(file, oldPath) => {
+						if (file instanceof TFile) { 
+							debounce(processMove, 200, true)(this.app, file, "auto", this.settings, oldPath);
+						}
+					}
+				));
+		});
 
 		this.addCommand({
 			id: 'Move-all-notes',

@@ -1,17 +1,17 @@
-import { App, normalizePath, TAbstractFile, TFile, TFolder, Vault } from "obsidian";
-import { ExcludedFolder as ExcludedFolderRule, NoteMoverSettings, Rule } from "./settings";
+import { App, CachedMetadata, normalizePath, parseFrontMatterEntry, TAbstractFile, TFile, TFolder, Vault } from "obsidian";
+import { Caller, ExcludedFolder as ExcludedFolderRule, FileExcludedFrontMatterEntry, FileExcludedFrontMatterEntryName, getTypedValue, NoteMoverSettings, Rule, SourceFolder } from "./settings";
 import { getAPI, DataviewApi } from "obsidian-dataview";
 import { log } from "./logger/CompositeLogger";
 
 export type FileCheckFn = (path: string) => TAbstractFile | null;
 export type RenameFileFn = (file: TFile, newPath: string) => Promise<void>
-export type Caller = 'cmd' | 'auto';
 
 
 export async function processMove(app: App, file: TFile, caller: Caller, settings: NoteMoverSettings, oldPath?: string,): Promise<boolean> {
 
-    if (!(file instanceof TFile)) return;
     let isfileMoved = false;
+    if (settings.trigger === "cmd" && caller === 'auto')
+        return isfileMoved;
 
     log.logMessage(`id:${file.name} Start processing move of file`);
 
@@ -26,8 +26,16 @@ export async function processMove(app: App, file: TFile, caller: Caller, setting
         return isfileMoved;
     }
 
-    const getAbstractFileFn: FileCheckFn = (path: string) => app.vault.getAbstractFileByPath(normalizePath(path))
-    const renameFileFn: RenameFileFn = async (oldName, newName) => app.fileManager.renameFile(oldName, newName); // TODO написакть почему именно его а не move
+
+    if (isFileExcluded(file, app)) {
+        return isfileMoved;
+    }
+
+    const getAbstractFileFn: FileCheckFn = (path: string) => app.vault.getAbstractFileByPath(normalizePath(path));
+    const renameFileFn: RenameFileFn = async (oldName, newName) => {
+        // Avoid using vault.rename(), as it does not automatically update or rename links pointing to the renamed file.
+        return app.fileManager.renameFile(oldName, newName);
+    } 
     const dataviewApi: DataviewApi = getAPI(app) as DataviewApi;
 
     log.logMessage(`id:${file.name} Rule check initiated`);
@@ -35,15 +43,15 @@ export async function processMove(app: App, file: TFile, caller: Caller, setting
     for (const rule of settings.rules) {
 
         const currentPath = normalizePath(file.path);
-        const targetPath = normalizePath(`${rule.targetFolder}/${fileFullName}`);
+        const targetPath = normalizePath(`${rule.targetFolder.path}/${fileFullName}`);
 
-        const parentFolder = file.parent!; // TODO root folder как обабатывать???
+        const parentFolder = file.parent!; // The file will have the parent folder "/" at the root.
 
-        if (!FileInSourceFolder(parentFolder.path, rule.sourceFolder)) { //TODO рекурсивно???
+        if (!FileInSourceFolder(parentFolder.path, rule.sourceFolder)) {
             continue;
         }
 
-        const isFileFollowsRule = FileFollowsRule(dataviewApi, rule, currentPath)
+        const isFileFollowsRule = await FileFollowsRule(dataviewApi, rule, file)
 
         if (!isFileFollowsRule)
             continue;
@@ -68,16 +76,25 @@ export async function processMove(app: App, file: TFile, caller: Caller, setting
             log.logError(`id:${file.name} Failed to move file. Error: ${error}`);
         }
     }
+
+    return isfileMoved;
 }
 
-function FileInSourceFolder(parentFolderPath: string, sourceFolderPath: string) {
-    return parentFolderPath === sourceFolderPath;
+function FileInSourceFolder(parentFolderPath: string, sourceFolder: SourceFolder) {
+    const normalizedFileFolderPath = normalizePath(parentFolderPath);
+    const normalizedSourceFolderPath = normalizePath(sourceFolder.path);
+
+    if (sourceFolder.withSubfolders) {
+        return normalizedFileFolderPath === normalizedSourceFolderPath ||
+            normalizedFileFolderPath.startsWith(normalizedSourceFolderPath)
+    }
+
+    return normalizedFileFolderPath === normalizedSourceFolderPath;
 }
 
-async function FileFollowsRule(dataviewApi: DataviewApi, rule: Rule, fullFilePath: string) {
+async function FileFollowsRule(dataviewApi: DataviewApi, rule: Rule, file: TFile) {
 
-
-    // TODO как это будет работать с другими file.extention?
+    const fullFilePath = normalizePath(file.path);
     // Alternative WHERE file.path (with .extention)
     let query = `
     LIST
@@ -100,31 +117,32 @@ async function FileFollowsRule(dataviewApi: DataviewApi, rule: Rule, fullFilePat
 
 
 function AlreadyInTargetFolder(currentPath: string, targetPath: string,) {
+
     return currentPath === targetPath;
 }
 
 function isFileInExcludedFolder(
     file: TFile,
     excludedFolders: ExcludedFolderRule[],
-  ): boolean {
+): boolean {
     if (!file.parent) return false;
-  
+
     const normalizedFileFolder = normalizePath(file.parent.path);
-  
+
     return excludedFolders.some(excluded => {
-      if (!excluded.folderPath) return false;
-  
-      const normalizedExcludedFolder = normalizePath(excluded.folderPath);
-  
-      if (excluded.withSubfolders) {
-        return normalizedFileFolder === normalizedExcludedFolder ||
-               normalizedFileFolder.startsWith(normalizedExcludedFolder);
-      }
-  
-      return normalizedFileFolder === normalizedExcludedFolder;
+        if (!excluded.path) return false;
+
+        const normalizedExcludedFolder = normalizePath(excluded.path);
+
+        if (excluded.withSubfolders) {
+            return normalizedFileFolder === normalizedExcludedFolder ||
+                normalizedFileFolder.startsWith(normalizedExcludedFolder);
+        }
+
+        return normalizedFileFolder === normalizedExcludedFolder;
     });
-  }
-  
+}
+
 
 function shouldProcessRename(newFilename: string, oldPath?: string) {
     if (!oldPath) return false;
@@ -137,4 +155,18 @@ function shouldProcessRename(newFilename: string, oldPath?: string) {
 function createFullName(file: TFile) {
     return `${file.basename}.${file.extension}`
 }
+
+// Disable file movement when "NoteMover: disable" is present in the front matter.
+function isFileExcluded(file: TFile, app: App) {
+
+    const fileCache = this.app.metadataCache.getFileCache(file);
+    const frontMatterEntry = parseFrontMatterEntry(fileCache.frontmatter, FileExcludedFrontMatterEntryName) as string;
+    if (frontMatterEntry === getTypedValue<FileExcludedFrontMatterEntry>('disable')) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
 

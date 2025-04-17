@@ -2,31 +2,52 @@ import { App, ButtonComponent, PluginSettingTab, Setting, TextComponent } from "
 import NoteMover from "./main";
 import { arrayMove } from "./utilt";
 import { FolderSuggest2 } from "./suggests/folder-suggest2";
-import {FolderSuggest3 } from "./suggests/folder-suggest3";
+import { FolderSuggest3 } from "./suggests/folder-suggest3";
 
 export interface ExcludedFolder {
-	folderPath: string;
+	path: string;
 	withSubfolders: boolean
 }
 
+export interface SourceFolder {
+	path: string;
+	withSubfolders: boolean
+}
+
+export interface TargetFolder {
+	path: string;
+}
+
 export interface Rule {
-	sourceFolder: string;
-	targetFolder: string;
+	sourceFolder: SourceFolder;
+	targetFolder: TargetFolder;
 	filter: string;
 }
 
 export interface NoteMoverSettings {
-	mySetting: string;
-	use_regex_for_excluded_folder: boolean;
 	rules: Array<Rule>;
-	excludedFolders:  Array<ExcludedFolder>,
+	excludedFolders: Array<ExcludedFolder>,
+	trigger: Caller,
+	isDebug: boolean
+
+}
+export type Caller = 'cmd' | 'auto';
+const CALLER_OPTIONS: Record<Caller, string> = {
+	'cmd': 'Manual',
+	'auto': 'Automatic'
+};
+
+export const FileExcludedFrontMatterEntryName = 'NoteMover'
+export type FileExcludedFrontMatterEntry = 'disable' | "enable"
+export function getTypedValue<T>(value: T): string {
+	return String(value);
 }
 
 export const DEFAULT_SETTINGS: NoteMoverSettings = {
-	mySetting: 'default',
-	use_regex_for_excluded_folder: false,
-	rules: [{ sourceFolder: '', targetFolder: '', filter: '' }],
-	excludedFolders : [],
+	trigger: "auto",
+	rules: [{ sourceFolder: { path: '', withSubfolders: true }, targetFolder: { path: '' }, filter: '' }],
+	excludedFolders: [],
+	isDebug: false
 }
 
 
@@ -43,26 +64,70 @@ export class NoteMoverSettingTab extends PluginSettingTab {
 
 		// Reset the container's content before populating it with new elements
 		// This prevents accumulation of duplicate entries when the method is called multiple times
-		containerEl.empty(); 
+		containerEl.empty();
 
-		this.addSettings();
+		this.AddTrigger();
+		this.addRules();
+		this.addExcludedFolders();
+		this.addDebug();
+
 	}
 
-	addSettings() {
+
+	private AddTrigger() {
 		const descEl = document.createDocumentFragment();
 
-		this.addRules();
-
-		const excludedFolderDesc = document.createDocumentFragment();
-		excludedFolderDesc.append(
-			'Notes in the excluded folder will not be moved.',
+		const triggerDesc = document.createDocumentFragment();
+		triggerDesc.append(
+			'Choose how the trigger will be activated.', 'You can also activate/disactivate the trigger with a command.',
 			descEl.createEl('br'),
-			'This takes precedence over the notes movement rules.'
+			descEl.createEl('strong', { text: 'Automatic ' }),
+			'is triggered when you create, edit, or rename a note, and moves the note if it matches the rules.',
+			descEl.createEl('br'),
+			descEl.createEl('strong', { text: 'Manual ' }), 'will not automatically move notes.', 'You can trigger by command.'
 		);
+		new Setting(this.containerEl)
+			.setName('Trigger')
+			.setDesc(triggerDesc)
+			.addDropdown((dropDown) => {
+				Object.entries(CALLER_OPTIONS).forEach(([value, display]) => {
+					dropDown.addOption(value, display);
+				});
+				dropDown
+					.setValue(this.plugin.settings.trigger)
+					.onChange((value: Caller) => {
+						this.plugin.settings.trigger = value;
+						this.plugin.saveData(this.plugin.settings);
+						this.display();
+					});
+			});
+	}
+
+	private addDebug() {
+		const s = new Setting(this.containerEl);
+		const descD = document.createDocumentFragment();
+		descD.append(
+			'Enables log output to the console and gui'
+		);
+		s.setName("Debuging mode");
+		s.setDesc(descD);
+		s.addToggle((toggle) => {
+			toggle.setValue(this.plugin.settings.isDebug)
+
+				.setTooltip("Source folder with subfolders")
+				.onChange(async (value) => {
+					this.plugin.settings.isDebug = value;
+					await this.plugin.saveSettings();
+					this.display();
+				});
+		});
+	}
+
+	private addExcludedFolders() {
+		const descEl = document.createDocumentFragment();
 		new Setting(this.containerEl)
 
 			.setName('Add Excluded Folder')
-			.setDesc(excludedFolderDesc)
 			.addButton((button: ButtonComponent) => {
 				button
 					.setTooltip('Add Excluded Folders')
@@ -70,7 +135,7 @@ export class NoteMoverSettingTab extends PluginSettingTab {
 					.setCta()
 					.onClick(async () => {
 						this.plugin.settings.excludedFolders.push({
-							folderPath: '',
+							path: '',
 							withSubfolders: true
 						});
 						await this.plugin.saveSettings();
@@ -83,32 +148,32 @@ export class NoteMoverSettingTab extends PluginSettingTab {
 				.addSearch((cb) => {
 					new FolderSuggest3(cb.inputEl, this.app);
 					cb.setPlaceholder('Folder')
-						.setValue(excluded_folder.folderPath)
+						.setValue(excluded_folder.path)
 						.onChange(async (newFolder) => {
-							this.plugin.settings.excludedFolders[index].folderPath = newFolder;
+							this.plugin.settings.excludedFolders[index].path = newFolder;
 							await this.plugin.saveSettings();
 						});
 				});
 
-				s.addToggle((toggle) => {
-					toggle.setValue(excluded_folder.withSubfolders)
+			s.addToggle((toggle) => {
+				toggle.setValue(excluded_folder.withSubfolders)
 					.setTooltip("Include subfolders")
 					.onChange(async (value) => {
 						this.plugin.settings.excludedFolders[index].withSubfolders = value;
 						await this.plugin.saveSettings();
 						this.display();
 					});
-				});
+			});
 
-				s.addExtraButton((cb) => {
-					cb.setIcon('up-chevron-glyph')
-						.setTooltip('Move up')
-						.onClick(async () => {
-							arrayMove(this.plugin.settings.excludedFolders, index, index - 1);
-							await this.plugin.saveSettings();
-							this.display();
-						});
-				})
+			s.addExtraButton((cb) => {
+				cb.setIcon('up-chevron-glyph')
+					.setTooltip('Move up')
+					.onClick(async () => {
+						arrayMove(this.plugin.settings.excludedFolders, index, index - 1);
+						await this.plugin.saveSettings();
+						this.display();
+					});
+			})
 				.addExtraButton((cb) => {
 					cb.setIcon('down-chevron-glyph')
 						.setTooltip('Move down')
@@ -129,7 +194,6 @@ export class NoteMoverSettingTab extends PluginSettingTab {
 				});
 			s.infoEl.remove();
 		});
-		
 	}
 
 	addRules() {
@@ -170,8 +234,8 @@ export class NoteMoverSettingTab extends PluginSettingTab {
 					.setCta()
 					.onClick(async () => {
 						this.plugin.settings.rules.push({
-							sourceFolder: '',
-							targetFolder: '',
+							sourceFolder: {path: '', withSubfolders: true},
+							targetFolder: {path: ''},
 							filter: '',
 						});
 						await this.plugin.saveSettings();
@@ -179,32 +243,41 @@ export class NoteMoverSettingTab extends PluginSettingTab {
 					});
 			});
 
-		this.plugin.settings.rules.forEach((folder_tag_pattern, index) => {
+		this.plugin.settings.rules.forEach((rule, index) => {
 
 			const s = new Setting(this.containerEl)
 
 				.addSearch((cb) => {
 					new FolderSuggest3(cb.inputEl, this.app);
 					cb.setPlaceholder('From folder')
-						.setValue(folder_tag_pattern.sourceFolder)
+						.setValue(rule.sourceFolder.path)
 						.onChange(async (newFolder) => {
-							this.plugin.settings.rules[index].sourceFolder = newFolder.trim();
+							this.plugin.settings.rules[index].sourceFolder.path = newFolder.trim();
 							await this.plugin.saveSettings();
 						});
 				})
-				.addSearch((cb) => {
+				s.addToggle((toggle) => {
+					toggle.setValue(rule.sourceFolder.withSubfolders)
+						.setTooltip("Source folder with subfolders")
+						.onChange(async (value) => {
+							this.plugin.settings.rules[index].sourceFolder.withSubfolders = value;
+							await this.plugin.saveSettings();
+							this.display();
+						});
+				});
+				s.addSearch((cb) => {
 					new FolderSuggest3(cb.inputEl, this.app);
 					cb.setPlaceholder('To folder')
-						.setValue(folder_tag_pattern.targetFolder)
+						.setValue(rule.targetFolder.path)
 						.onChange(async (newFolder) => {
-							this.plugin.settings.rules[index].targetFolder = newFolder.trim();
+							this.plugin.settings.rules[index].targetFolder.path = newFolder.trim();
 							await this.plugin.saveSettings();
 						});
 				})
 
 				.addText((cb) => {
 					cb.setPlaceholder('Condition')
-						.setValue(folder_tag_pattern.filter)
+						.setValue(rule.filter)
 						.onChange(async (newQuery) => {
 							this.plugin.settings.rules[index].filter = newQuery.trim();
 							await this.plugin.saveSettings();
