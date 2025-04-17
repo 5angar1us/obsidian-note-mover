@@ -132,7 +132,33 @@ export class NoteMoverSettingTab extends PluginSettingTab {
 		
 	}
 
-	addRules(){
+	addRules() {
+		const descEl = document.createDocumentFragment();
+		const ruleDesc = document.createDocumentFragment();
+		ruleDesc.append(
+			'1. Set the source folder',
+			descEl.createEl('br'),
+			'2. Set the destination folder.',
+			descEl.createEl('br'),
+			'3. Create an Dataview WHERE expression that matches the note you want to move. ',
+			//descEl.createEl('strong', { text: 'use and(&) or(|) not(!) and parens(()). use [] for values. `example: tag[nohash]&project[myproj]' }),
+			descEl.createEl('br'),
+			'4. The rules are checked in order from the top. The notes will be moved to the folder with the ',
+			descEl.createEl('strong', { text: 'last matching rule.' }),
+			descEl.createEl('br'),
+			descEl.createEl('br'),
+			'Notice:',
+			descEl.createEl('br'),
+			'1. Attached files will not be moved, but they will still appear in the note.',
+			descEl.createEl('br'),
+			'2. Note Mover will not move notes that have "',
+			descEl.createEl('strong', { text: `${FileExcludedFrontMatterEntryName}: ${getTypedValue<FileExcludedFrontMatterEntry>('disable')}` }),
+			'" in the frontmatter.'
+		);
+		new Setting(this.containerEl)
+
+			.setName('Add new rule')
+			.setDesc(ruleDesc)
 		new Setting(this.containerEl)
 
 			.setName('Add new rule')
