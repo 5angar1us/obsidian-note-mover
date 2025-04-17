@@ -1,6 +1,7 @@
 import { App, normalizePath, TAbstractFile, TFile, TFolder, Vault } from "obsidian";
 import { ExcludedFolder as ExcludedFolderRule, NoteMoverSettings, Rule } from "./settings";
 import { getAPI, DataviewApi } from "obsidian-dataview";
+import { log } from "./logger/CompositeLogger";
 
 export type FileCheckFn = (path: string) => TAbstractFile | null;
 export type RenameFileFn = (file: TFile, newPath: string) => Promise<void>
@@ -13,7 +14,7 @@ export async function handleFiles(app: App, file: TAbstractFile, сaller: Caller
 
     if (!(file instanceof TFile)) return;
 
-    console.log(`start move file:${file.name}`);
+    log.logMessage(`id:${file.name} Start processing move of file`);
 
     const fileName = file.basename; // fileName
     const fileFullName = createFullName(file); // fileName.extention
@@ -30,7 +31,8 @@ export async function handleFiles(app: App, file: TAbstractFile, сaller: Caller
     const renameFileFn: RenameFileFn = async (oldName, newName) => app.fileManager.renameFile(oldName, newName); // TODO написакть почему именно его а не move
     const dataviewApi: DataviewApi = getAPI(app) as DataviewApi;
 
-    console.log(`check rules for file:${file.name}`);
+    log.logMessage(`id:${file.name} Rule check initiated`);
+
     for (const rule of settings.rules) {
 
         const currentPath = normalizePath(file.path);
@@ -48,22 +50,22 @@ export async function handleFiles(app: App, file: TAbstractFile, сaller: Caller
             continue;
 
         if (AlreadyInTargetFolder(currentPath, targetPath)) {
+            log.logMessage(`id:${file.name} A file already in target directory.`);
             continue;
         }
 
         const existingFile = getAbstractFileFn(targetPath);
         if (existingFile instanceof TFile) {
-            const errorMsg = `[Auto Note Mover] Error: A file with the same name "${fileFullName}" exists at the destination folder.`;
-            console.error(errorMsg);
+            log.logMessage(`id:${file.name} Target path "${targetPath}" already contains a file with same name.`);
             continue;
         }
 
         try {
             await renameFileFn(file, targetPath);
-            const successMsg = `[Auto Note Mover] Moved the note "${fileFullName}" to "${rule.targetFolder}".`;
-            console.log(successMsg);
+
+            log.logMessage(`id:${file.name} Moved the note "${fileFullName}" to "${rule.targetFolder}".`)
         } catch (error) {
-            console.error(`[Auto Note Mover] Failed to move file: ${error}`);
+            log.logError(`id:${file.name} Failed to move file. Error: ${error}`);
         }
     }
 }
@@ -82,6 +84,8 @@ async function FileFollowsRule(dataviewApi: DataviewApi, rule: Rule, fullFilePat
     FROM "${fullFilePath}"
     WHERE ${rule.filter}`;
 
+    log.logMessage(`id:${file.name} query:${query}`)
+
     try {
         const result = await dataviewApi.tryQuery(query, this.app.workspace.getActiveFile()?.path);
         if (result.values.length > 1) {
@@ -90,7 +94,6 @@ async function FileFollowsRule(dataviewApi: DataviewApi, rule: Rule, fullFilePat
         return result.values === 1;
 
     } catch (error) {
-        console.error("Dataview query error:", error);
         throw error;
     }
 }

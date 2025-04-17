@@ -32,8 +32,6 @@ export class FolderSuggest3 extends AbstractInputSuggest<string> {
     }
 
     selectSuggestion(folder: string): void {
-
-        console.log(folder)
         this.inputEl.value = folder;
         const event = new Event('input');
         this.inputEl.dispatchEvent(event);

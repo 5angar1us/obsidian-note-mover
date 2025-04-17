@@ -1,13 +1,24 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import { handleFiles } from './handleFiles';
 import { DEFAULT_SETTINGS, NoteMoverSettings, NoteMoverSettingTab } from './settings';
+import { log } from './logger/CompositeLogger';
+import { ErrorLevel } from './logger/consts/errorLevel';
+import { ConsoleErrorLogger } from './logger/ConsoleErrorLogger';
+import { GuiLogger } from './logger/GuiLogger';
 
 
 export default class NoteMover extends Plugin {
 	settings: NoteMoverSettings;
 
 	async onload() {
+		console.log("Loading NoteMover");
 		await this.loadSettings();
+
+		if (this.settings.isDebug){
+			log.register(new ConsoleErrorLogger())
+			.register(new GuiLogger(this));
+		}
+		
 
 		this.app.workspace.onLayoutReady(() => {
 			// We need dataview for the plugin to work. His requests are responsible for the rules for moving files.
