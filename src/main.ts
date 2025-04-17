@@ -97,6 +97,25 @@ export default class NoteMover extends Plugin {
 		});
 
 		this.addCommand({
+			id: 'Move-the-note',
+			name: 'Move the note',
+			checkCallback: (checking: boolean) => {
+				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+				if (!markdownView?.file) return false;
+
+				if (!checking) {
+					// The "checkCallback cannot be executed asynchronously. You could use callback for this purpose, 
+					// but it can't be used here. A quick solution is to not wait for the promise to resolve."
+
+					processMove(this.app, markdownView.file, 'cmd', this.settings)
+						.catch(error => log.logError(error))
+				}
+				return true;
+
+			},
+		});
+
+		this.addCommand({
 			id: 'Move-all-notes',
 			name: 'Move all notes',
 			callback: async () => {
