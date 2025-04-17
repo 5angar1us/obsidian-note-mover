@@ -91,7 +91,7 @@ async function FileFollowsRule(dataviewApi: DataviewApi, rule: Rule, fullFilePat
         if (result.values.length > 1) {
             throw new Error("Only one element is expected as a result of the query execution.");
         }
-        return result.values === 1;
+        return result.values.length === 1;
 
     } catch (error) {
         throw error;
