@@ -9,6 +9,22 @@ export default class NoteMover extends Plugin {
 	async onload() {
 		await this.loadSettings();
 
+		this.app.workspace.onLayoutReady(() => {
+			// We need dataview for the plugin to work. His requests are responsible for the rules for moving files.
+			// Inline and Javascript quieres are not required
+
+			// example: https://github.com/mdelobelle/metadatamenu/blob/master/main.ts
+
+			const dataviewPluginName = "dataview";
+			//@ts-ignore
+			if (!this.app.plugins.enabledPlugins.has(dataviewPluginName)) {
+				new Notice(
+					`------------------------------------------\n` +
+					`(!) INFO (!) \n` +
+					`Install and enable dataview forthe plugin to work\n` +
+					`------------------------------------------`)
+			}
+		});
 		const moveAllNotesCommand = async () => {
 			const files = this.app.vault.getMarkdownFiles();
 			const filesLength = files.length;
