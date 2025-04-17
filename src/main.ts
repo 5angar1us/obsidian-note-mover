@@ -5,6 +5,7 @@ import { log } from './logger/CompositeLogger';
 import { ErrorLevel } from './logger/consts/errorLevel';
 import { ConsoleErrorLogger } from './logger/ConsoleErrorLogger';
 import { GuiLogger } from './logger/GuiLogger';
+import { PromisePool } from './PromisePool/PromisePool';
 
 
 export default class NoteMover extends Plugin {
@@ -36,14 +37,38 @@ export default class NoteMover extends Plugin {
 					`------------------------------------------`)
 			}
 		});
+
+
 		const moveAllNotesCommand = async () => {
-			const files = this.app.vault.getMarkdownFiles();
-			const filesLength = files.length;
-			for (let i = 0; i < filesLength; i++) {
-				await handleFiles(this.app, files[i], 'cmd', this.settings);
+			try {
+			  const files = this.app.vault.getMarkdownFiles();
+			  const pool = new PromisePool(5);
+			  
+			  const promises = files.map(file => 
+				pool.add(() => 
+				  processMove(this.app, file, 'cmd', this.settings)
+					.catch(e => {
+					  log.reportError(e, `Error processing ${file.path}`);
+					  return false;
+					})
+				)
+			  );
+			  
+			  const moveResults = await Promise.all(promises);
+			  
+			  const movedCount = moveResults.filter(Boolean).length;
+			  const skippedCount = files.length - movedCount;
+		  
+			  new Notice(
+				`Processed ${files.length} notes:\n` +
+				`• Moved: ${movedCount}\n` +
+				`• Skipped: ${skippedCount}`
+			  );
+		  
+			} catch (error) {
+			  log.reportError(error, "Failed to process notes.", ErrorLevel.Error);
+			  throw error;
 			}
-			new Notice(`All ${filesLength} notes have been moved.`);
-		};
 
 		this.addCommand({
 			id: 'Move-all-notes',

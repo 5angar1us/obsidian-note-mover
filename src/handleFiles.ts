@@ -8,11 +8,10 @@ export type RenameFileFn = (file: TFile, newPath: string) => Promise<void>
 export type Caller = 'cmd' | 'auto';
 
 
-export async function handleFiles(app: App, file: TAbstractFile, сaller: Caller, settings: NoteMoverSettings, oldPath?: string,) {
-    //TODO Автоматический режим активации - добавить в настройки триггер
-    //проверка this.settings.trigger_auto_manual !== 'Automatic' && caller !== 'cmd'
+export async function processMove(app: App, file: TFile, caller: Caller, settings: NoteMoverSettings, oldPath?: string,): Promise<boolean> {
 
     if (!(file instanceof TFile)) return;
+    let isfileMoved = false;
 
     log.logMessage(`id:${file.name} Start processing move of file`);
 
@@ -20,11 +19,11 @@ export async function handleFiles(app: App, file: TAbstractFile, сaller: Caller
     const fileFullName = createFullName(file); // fileName.extention
 
     if (oldPath && !shouldProcessRename(fileFullName, oldPath)) {
-        return;
+        return isfileMoved;
     }
 
     if (isFileInExcludedFolder(file, settings.excludedFolders)) {
-        return;
+        return isfileMoved;
     }
 
     const getAbstractFileFn: FileCheckFn = (path: string) => app.vault.getAbstractFileByPath(normalizePath(path))
@@ -61,6 +60,7 @@ export async function handleFiles(app: App, file: TAbstractFile, сaller: Caller
         }
 
         try {
+            isfileMoved = true;
             await renameFileFn(file, targetPath);
 
             log.logMessage(`id:${file.name} Moved the note "${fileFullName}" to "${rule.targetFolder}".`)
