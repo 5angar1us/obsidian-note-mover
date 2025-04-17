@@ -1,5 +1,5 @@
-import { handleFiles } from './handleFiles';
 import { App, debounce, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
+import { processMove } from './handleFiles';
 import { DEFAULT_SETTINGS, NoteMoverSettings, NoteMoverSettingTab } from './settings';
 import { log } from './logger/CompositeLogger';
 import { ErrorLevel } from './logger/consts/errorLevel';
