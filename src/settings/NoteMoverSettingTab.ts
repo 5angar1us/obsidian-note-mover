@@ -1,9 +1,9 @@
-import { App, ButtonComponent, PluginSettingTab, Setting, TextComponent } from "obsidian";
+import { App, ButtonComponent, PluginSettingTab, Setting} from "obsidian";
 import NoteMover from "../main";
 import { arrayMove } from "../utilt";
-import { FolderSuggest2 } from "../suggests/folder-suggest2";
 import { FolderSuggest3 } from "../suggests/folder-suggest3";
 import { Caller, ExcludedFolder, FileExcludedFrontMatterEntry, FileExcludedFrontMatterEntryName, getTypedValue, NoteMoverSettings, Rule } from "./settingsTypes";
+import { RuleModal } from "./RuleModal";
 
 
 export const DEFAULT_SETTINGS: NoteMoverSettings = {
@@ -173,7 +173,6 @@ export class NoteMoverSettingTab extends PluginSettingTab {
 			'2. Set the destination folder.',
 			descEl.createEl('br'),
 			'3. Create an Dataview WHERE expression that matches the note you want to move. ',
-			//descEl.createEl('strong', { text: 'use and(&) or(|) not(!) and parens(()). use [] for values. `example: tag[nohash]&project[myproj]' }),
 			descEl.createEl('br'),
 			'4. The rules are checked in order from the top. The notes will be moved to the folder with the ',
 			descEl.createEl('strong', { text: 'last matching rule.' }),
@@ -187,99 +186,78 @@ export class NoteMoverSettingTab extends PluginSettingTab {
 			descEl.createEl('strong', { text: `${FileExcludedFrontMatterEntryName}: ${getTypedValue<FileExcludedFrontMatterEntry>('disable')}` }),
 			'" in the frontmatter.'
 		);
+	
 		new Setting(this.containerEl)
-
-			.setName('Add new rule')
-			.setDesc(ruleDesc)
+			.setName('Rules Configuration')
+			.setDesc(ruleDesc);
+	
 		new Setting(this.containerEl)
-
 			.setName('Add new rule')
-			//.setDesc(ruleDesc)
 			.addButton((button: ButtonComponent) => {
 				button
 					.setTooltip('Add new rule')
 					.setButtonText('+')
 					.setCta()
-					.onClick(async () => {
-						this.plugin.settings.rules.push({
-							sourceFolder: {path: '', withSubfolders: true},
-							targetFolder: {path: ''},
-							filter: '',
+					.onClick(() => {
+						const modal = new RuleModal(this.app, this.plugin, undefined, (newRule) => {
+							if (newRule) {
+								this.plugin.settings.rules.push(newRule);
+								this.plugin.saveSettings();
+								this.display();
+							}
 						});
+						modal.open();
+					});
+			});
+	
+		this.plugin.settings.rules.forEach((rule, index) => {
+			const s = new Setting(this.containerEl)
+				.setName(`Rule #${index + 1}`)
+				.setDesc(`Source: ${rule.sourceFolder.path} (${rule.sourceFolder.withSubfolders ? 'with subfolders' : 'no subfolders'}) → Target: ${rule.targetFolder.path} | Filter: ${rule.filter}`);
+	
+			s.addButton((button) => {
+				button.setButtonText('Edit')
+					.onClick(() => {
+						const modal = new RuleModal(this.app, this.plugin, rule, (updatedRule) => {
+							if (updatedRule) {
+								this.plugin.settings.rules[index] = updatedRule;
+								this.plugin.saveSettings();
+								this.display();
+							}
+						});
+						modal.open();
+					});
+			});
+	
+			s.addExtraButton((cb) => {
+				cb.setIcon('up-chevron-glyph')
+					.setTooltip('Move up')
+					.onClick(async () => {
+						arrayMove(this.plugin.settings.rules, index, index - 1);
 						await this.plugin.saveSettings();
 						this.display();
 					});
 			});
-
-		this.plugin.settings.rules.forEach((rule:Rule, index:number) => {
-
-			const s = new Setting(this.containerEl)
-
-				.addSearch((cb) => {
-					new FolderSuggest3(cb.inputEl, this.app);
-					cb.setPlaceholder('From folder')
-						.setValue(rule.sourceFolder.path)
-						.onChange(async (newFolder) => {
-							this.plugin.settings.rules[index].sourceFolder.path = newFolder.trim();
-							await this.plugin.saveSettings();
-						});
-				})
-				s.addToggle((toggle) => {
-					toggle.setValue(rule.sourceFolder.withSubfolders)
-						.setTooltip("Source folder with subfolders")
-						.onChange(async (value) => {
-							this.plugin.settings.rules[index].sourceFolder.withSubfolders = value;
-							await this.plugin.saveSettings();
-							this.display();
-						});
-				});
-				s.addSearch((cb) => {
-					new FolderSuggest3(cb.inputEl, this.app);
-					cb.setPlaceholder('To folder')
-						.setValue(rule.targetFolder.path)
-						.onChange(async (newFolder) => {
-							this.plugin.settings.rules[index].targetFolder.path = newFolder.trim();
-							await this.plugin.saveSettings();
-						});
-				})
-
-				.addText((cb) => {
-					cb.setPlaceholder('Condition')
-						.setValue(rule.filter)
-						.onChange(async (newQuery) => {
-							this.plugin.settings.rules[index].filter = newQuery.trim();
-							await this.plugin.saveSettings();
-						});
-				})
-
-				.addExtraButton((cb) => {
-					cb.setIcon('up-chevron-glyph')
-						.setTooltip('Move up')
-						.onClick(async () => {
-							arrayMove(this.plugin.settings.rules, index, index - 1);
-							await this.plugin.saveSettings();
-							this.display();
-						});
-				})
-				.addExtraButton((cb) => {
-					cb.setIcon('down-chevron-glyph')
-						.setTooltip('Move down')
-						.onClick(async () => {
-							arrayMove(this.plugin.settings.rules, index, index + 1);
-							await this.plugin.saveSettings();
-							this.display();
-						});
-				})
-				.addExtraButton((cb) => {
-					cb.setIcon('cross')
-						.setTooltip('Delete')
-						.onClick(async () => {
-							this.plugin.settings.rules.splice(index, 1);
-							await this.plugin.saveSettings();
-							this.display();
-						});
-				});
-			s.infoEl.remove();
+	
+			s.addExtraButton((cb) => {
+				cb.setIcon('down-chevron-glyph')
+					.setTooltip('Move down')
+					.onClick(async () => {
+						arrayMove(this.plugin.settings.rules, index, index + 1);
+						await this.plugin.saveSettings();
+						this.display();
+					});
+			});
+	
+			s.addExtraButton((cb) => {
+				cb.setIcon('cross')
+					.setTooltip('Delete')
+					.onClick(async () => {
+						this.plugin.settings.rules.splice(index, 1);
+						await this.plugin.saveSettings();
+						this.display();
+					});
+			});
 		});
 	}
 
