@@ -2,13 +2,13 @@ import { App, ButtonComponent, PluginSettingTab, Setting} from "obsidian";
 import NoteMover from "../main";
 import { arrayMove } from "../utilt";
 import { FolderSuggest3 } from "../suggests/folder-suggest3";
-import { Caller, ExcludedFolder, FileExcludedFrontMatterEntry, FileExcludedFrontMatterEntryName, getTypedValue, NoteMoverSettings, Rule } from "./settingsTypes";
+import { Caller, DataViewWhereExpression, ExcludedFolder, FileExcludedFrontMatterEntry, FileExcludedFrontMatterEntryName, getTypedValue, NoteMoverSettings, Rule } from "./settingsTypes";
 import { RuleModal } from "./RuleModal";
 
 
 export const DEFAULT_SETTINGS: NoteMoverSettings = {
 	trigger: "auto",
-	rules: [{ sourceFolder: { path: '', withSubfolders: true }, targetFolder: { path: '' }, filter: '' }],
+	rules: [{ sourceFolder: { path: '', withSubfolders: true }, targetFolder: { path: '' }, filter: '' as DataViewWhereExpression }],
 	excludedFolders: [],
 	isDebug: false
 }
@@ -213,7 +213,9 @@ export class NoteMoverSettingTab extends PluginSettingTab {
 		this.plugin.settings.rules.forEach((rule, index) => {
 			const s = new Setting(this.containerEl)
 				.setName(`Rule #${index + 1}`)
-				.setDesc(`Source: ${rule.sourceFolder.path} (${rule.sourceFolder.withSubfolders ? 'with subfolders' : 'no subfolders'}) → Target: ${rule.targetFolder.path} | Filter: ${rule.filter}`);
+				.setDesc(`Source: ${rule.sourceFolder.path} (${rule.sourceFolder.withSubfolders ? 
+					'with subfolders' : 'no subfolders'}) → Target: ${rule.targetFolder.path} 
+					| Filter: ${rule.filter}`);
 	
 			s.addButton((button) => {
 				button.setButtonText('Edit')

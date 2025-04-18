@@ -15,7 +15,7 @@ export interface TargetFolder {
 export interface Rule {
     sourceFolder: SourceFolder;
     targetFolder: TargetFolder;
-    filter: string;
+    filter: DataViewWhereExpression;
 }
 
 export interface NoteMoverSettings {
@@ -25,8 +25,9 @@ export interface NoteMoverSettings {
     isDebug: boolean
 
 }
-export type Caller = 'cmd' | 'auto';
+export type DataViewWhereExpression = string & { __brand: "data_view_where_expession" };
 
+export type Caller = 'cmd' | 'auto';
 
 export const FileExcludedFrontMatterEntryName = 'NoteMover'
 export type FileExcludedFrontMatterEntry = 'disable' | "enable"

@@ -1,6 +1,6 @@
 import { App, Modal, Setting } from "obsidian";
 import NoteMover from "src/main";
-import { Rule } from "./settingsTypes";
+import { DataViewWhereExpression, Rule } from "./settingsTypes";
 import { FolderSuggest3 } from "src/suggests/folder-suggest3";
 
 export class RuleModal extends Modal {
@@ -8,7 +8,7 @@ export class RuleModal extends Modal {
     private sourcePath: string;
     private withSubfolders: boolean;
     private targetPath: string;
-    private filter: string;
+    private filter: DataViewWhereExpression;
 
     constructor(
         app: App,
@@ -20,7 +20,7 @@ export class RuleModal extends Modal {
         this.sourcePath = rule?.sourceFolder.path || '';
         this.withSubfolders = rule?.sourceFolder.withSubfolders ?? true;
         this.targetPath = rule?.targetFolder.path || '';
-        this.filter = rule?.filter || '';
+        this.filter = rule?.filter || '' as DataViewWhereExpression;
     }
 
     onOpen() {
@@ -82,7 +82,7 @@ export class RuleModal extends Modal {
                             targetFolder: {
                                 path: this.targetPath.trim()
                             },
-                            filter: this.filter.trim()
+                            filter: this.filter.trim() as DataViewWhereExpression
                         });
                         this.close();
                     });
