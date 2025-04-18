@@ -1,8 +1,9 @@
-import { App, normalizePath, parseFrontMatterEntry, TAbstractFile, TFile } from "obsidian";
+import { App, parseFrontMatterEntry, TAbstractFile, TFile } from "obsidian";
 
 import { getAPI, DataviewApi } from "obsidian-dataview";
 import { log } from "./logger/CompositeLogger";
 import { Caller, ExcludedFolder, FileExcludedFrontMatterEntry, FileExcludedFrontMatterEntryName, getTypedValue, NoteMoverSettings, Rule, SourceFolder } from "./settings/settingsTypes";
+import { NormalizedPath, normalizePath } from "./strongTypes/normalizePath";
 
 export type FileCheckFn = (path: string) => TAbstractFile | null;
 export type RenameFileFn = (file: TFile, newPath: string) => Promise<void>
@@ -32,11 +33,11 @@ export async function processMove(app: App, file: TFile, caller: Caller, setting
         return isfileMoved;
     }
 
-    const getAbstractFileFn: FileCheckFn = (path: string) => app.vault.getAbstractFileByPath(normalizePath(path));
+    const getAbstractFileFn: FileCheckFn = (path: NormalizedPath) => app.vault.getAbstractFileByPath(path);
     const renameFileFn: RenameFileFn = async (oldName, newName) => {
         // Avoid using vault.rename(), as it does not automatically update or rename links pointing to the renamed file.
         return app.fileManager.renameFile(oldName, newName);
-    } 
+    }
     const dataviewApi: DataviewApi = getAPI(app) as DataviewApi;
 
     log.logMessage(`id:${file.name} Rule check initiated`);
@@ -48,7 +49,7 @@ export async function processMove(app: App, file: TFile, caller: Caller, setting
 
         const parentFolder = file.parent!; // The file will have the parent folder "/" at the root.
 
-        if (!FileInSourceFolder(parentFolder.path, rule.sourceFolder)) {
+        if (!FileInSourceFolder(normalizePath(parentFolder.path), normalizePath(rule.sourceFolder.path), rule.sourceFolder.withSubfolders)) {
             continue;
         }
 
@@ -81,16 +82,14 @@ export async function processMove(app: App, file: TFile, caller: Caller, setting
     return isfileMoved;
 }
 
-function FileInSourceFolder(parentFolderPath: string, sourceFolder: SourceFolder) {
-    const normalizedFileFolderPath = normalizePath(parentFolderPath);
-    const normalizedSourceFolderPath = normalizePath(sourceFolder.path);
+function FileInSourceFolder(parentFolderPath: NormalizedPath, sourceFolderPath: NormalizedPath, withSubfolders: boolean) {
 
-    if (sourceFolder.withSubfolders) {
-        return normalizedFileFolderPath === normalizedSourceFolderPath ||
-            normalizedFileFolderPath.startsWith(normalizedSourceFolderPath)
+    if (withSubfolders) {
+        return parentFolderPath === sourceFolderPath ||
+            parentFolderPath.startsWith(sourceFolderPath)
     }
 
-    return normalizedFileFolderPath === normalizedSourceFolderPath;
+    return parentFolderPath === sourceFolderPath;
 }
 
 async function FileFollowsRule(dataviewApi: DataviewApi, rule: Rule, file: TFile) {
@@ -117,8 +116,7 @@ async function FileFollowsRule(dataviewApi: DataviewApi, rule: Rule, file: TFile
 }
 
 
-function AlreadyInTargetFolder(currentPath: string, targetPath: string,) {
-
+function AlreadyInTargetFolder(currentPath: string | NormalizedPath, targetPath: string | NormalizedPath) {
     return currentPath === targetPath;
 }
 
@@ -128,19 +126,19 @@ function isFileInExcludedFolder(
 ): boolean {
     if (!file.parent) return false;
 
-    const normalizedFileFolder = normalizePath(file.parent.path);
+    const parentFolderPath = normalizePath(file.parent.path);
 
     return excludedFolders.some(excluded => {
         if (!excluded.path) return false;
 
-        const normalizedExcludedFolder = normalizePath(excluded.path);
+        const excludedFolderPath = normalizePath(excluded.path);
 
         if (excluded.withSubfolders) {
-            return normalizedFileFolder === normalizedExcludedFolder ||
-                normalizedFileFolder.startsWith(normalizedExcludedFolder);
+            return parentFolderPath === excludedFolderPath ||
+                parentFolderPath.startsWith(excludedFolderPath);
         }
 
-        return normalizedFileFolder === normalizedExcludedFolder;
+        return parentFolderPath === excludedFolderPath;
     });
 }
 
