@@ -4,6 +4,7 @@ import { getAPI, DataviewApi } from "obsidian-dataview";
 import { log } from "./logger/CompositeLogger";
 import { Caller, ExcludedFolder, FileExcludedFrontMatterEntry, FileExcludedFrontMatterEntryName, getTypedValue, NoteMoverSettings, Rule, SourceFolder } from "./settings/settingsTypes";
 import { NormalizedPath, normalizePath } from "./strongTypes/normalizePath";
+import { buildMoveQuery } from "./buildQuery";
 
 export type FileCheckFn = (path: string) => TAbstractFile | null;
 export type RenameFileFn = (file: TFile, newPath: string) => Promise<void>
@@ -95,12 +96,8 @@ function FileInSourceFolder(parentFolderPath: NormalizedPath, sourceFolderPath: 
 async function FileFollowsRule(dataviewApi: DataviewApi, rule: Rule, file: TFile) {
 
     const fullFilePath = normalizePath(file.path);
-    // Alternative WHERE file.path (with .extention)
-    let query = `
-    LIST
-    FROM "${fullFilePath}"
-    WHERE ${rule.filter}`;
-
+    
+    let query = buildMoveQuery(fullFilePath, rule.filter)
     log.logMessage(`id:${file.name} query:${query}`)
 
     try {
@@ -166,6 +163,3 @@ function isFileExcluded(file: TFile, app: App) {
         return false;
     }
 }
-
-
-

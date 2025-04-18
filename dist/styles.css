@@ -1,8 +1,25 @@
-/*
-
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
-
-If your plugin does not need CSS, delete this file.
-
-*/
+.query-preview-textarea {
+    width: 100%;
+    display: block;
+    min-height: 150px;
+    max-height: 300px;
+    padding: 12px 16px;
+    font-size: 1em;
+    font-family: monospace;
+    line-height: 1.4;
+    background-color: var(--background-secondary);
+    color: var(--text-normal);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    white-space: pre-wrap; /* Позволяет переносить строки по словам */
+    overflow-y: auto;
+    resize: none;
+    user-select: text;
+}
+.query-textarea-container {
+    display: flex;
+    flex-direction: column;
+    width: 100% !important; /* на всякий случай */
+    min-width: 0; /* для flex контейнеров важно */
+}

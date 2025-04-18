@@ -2,6 +2,9 @@ import { App, Modal, Setting } from "obsidian";
 import NoteMover from "src/main";
 import { DataViewWhereExpression, Rule } from "./settingsTypes";
 import { FolderSuggest3 } from "src/suggests/folder-suggest3";
+import { QueryPreviewModal } from "./QueryPreviewModal";
+import { buildMoveQuery } from "src/buildQuery";
+import { normalizePath } from "src/strongTypes/normalizePath";
 
 export class RuleModal extends Modal {
     private saved = false;
@@ -64,9 +67,20 @@ export class RuleModal extends Modal {
                 text.setValue(this.filter)
                     .setPlaceholder('Dataview WHERE condition')
                     .onChange((value) => {
-                        this.filter = value;
+                        this.filter = value as DataViewWhereExpression;
                     });
-            });
+            })
+            .addButton((btn) => {
+                btn.setIcon("eye")                             // любой икон‑id из темы
+                    .setTooltip("Показать полный запрос")
+                    .onClick(() => {
+                        new QueryPreviewModal(this.app, buildMoveQuery(normalizePath(this.sourcePath), this.filter)).open();
+           });
+            })
+
+           
+           
+
 
         new Setting(contentEl)
             .addButton((btn) => {
