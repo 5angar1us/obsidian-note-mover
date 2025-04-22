@@ -1,3 +1,5 @@
+import { nm_filter_status } from "src/cssConsts";
+
 export class StatusIcon {
   private el: HTMLElement;
 
@@ -8,7 +10,7 @@ export class StatusIcon {
    */
   constructor(
     container: HTMLElement,
-    cssCls = "nm-filter-status",
+    cssCls = nm_filter_status,
     initialIcon = "⏳"
   ) {
     this.el = container.createEl("span", {

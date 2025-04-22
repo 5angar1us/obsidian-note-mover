@@ -1,4 +1,4 @@
-.query-preformatted { /* TODO */
+.nm-query-preformatted { 
     background-color: var(--background-secondary);
     color: var(--text-normal);
     padding: 12px 16px;
@@ -9,7 +9,6 @@
     white-space: pre-wrap; 
     font-family: monospace;
 }
-.nm-filter__status { margin-left: 6px; }
 
 .nm-search__input {
     width: 100%;
@@ -26,12 +25,11 @@
 }
 
 
-.nm-error-details { margin-top: 4px; }
-.nm-error-pre {
-  background: var(--background-modifier-border);
-  padding: 4px;
-  font-family: var(--monospaced-font-family);
-  font-size: 0.8em;
-  max-height: 200px;
-  overflow: auto;
+.nm-error__pre { 
+    background: var(--background-modifier-border);
+    padding: 4px;
+    font-family: var(--monospaced-font-family);
+    font-size: 0.8em;
+    max-height: 200px;
+    overflow: auto;
 }

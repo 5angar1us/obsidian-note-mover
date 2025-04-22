@@ -1,4 +1,5 @@
 import { App, Modal, Setting } from "obsidian";
+import { nmQueryPreformatted } from "src/cssConsts";
 
 export class QueryPreviewModal extends Modal {
     constructor(app: App, private query: string) {
@@ -16,7 +17,7 @@ export class QueryPreviewModal extends Modal {
             .setDesc('You can check the functionality of the request yourself in your storage:')
 
         contentEl.createEl('pre', {
-            cls: 'query-preformatted',
+            cls: nmQueryPreformatted,
             text: this.query
         });
 

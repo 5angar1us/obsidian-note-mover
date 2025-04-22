@@ -1,3 +1,5 @@
+import { nmError__Details, nmError__Pre } from "src/cssConsts";
+
 export class ErrorDetails {
   private detailsEl: HTMLDetailsElement;
   private preEl: HTMLElement;
@@ -11,12 +13,12 @@ export class ErrorDetails {
   constructor(
     container: HTMLElement,
     summaryText = "Show error details",
-    cssCls = "nm-error-details",
-    preCls = "nm-error-pre"
+    cssCls = nmError__Details,
+    preCls = nmError__Pre
   ) {
     this.detailsEl = container.createEl("details", { cls: cssCls });
-    // initially hide
-    this.detailsEl.style.display = "none";
+    this.detailsEl.style.display = "none"; // initially hide
+
     this.detailsEl.createEl("summary", { text: summaryText });
     this.preEl = this.detailsEl.createEl("pre", {
       cls: preCls,
