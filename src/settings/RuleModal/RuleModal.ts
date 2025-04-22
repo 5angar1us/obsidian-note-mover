@@ -1,26 +1,30 @@
 import { App, debounce, Modal, Setting } from "obsidian";
 import NoteMover from "src/main";
-import { DataViewWhereExpression, Rule } from "./settingsTypes";
 import { FolderSuggest3 } from "src/suggests/folder-suggest3";
-import { QueryPreviewModal } from "./QueryPreviewModal";
 import { buildMoveQuery } from "src/buildQuery";
 import { normalizePath } from "src/strongTypes/normalizePath";
 import { DataviewApi, getAPI } from "obsidian-dataview";
 import { log } from "src/logger/CompositeLogger";
 import { nm_filter_status, nmDatawiewWhereExpession__input, nmSearch__input } from "src/cssConsts";
+import { QueryPreviewModal } from "../QueryPreviewModal";
+import { DataViewWhereExpression, Rule } from "../settingsTypes";
+import { ErrorDetailsValidationComponent } from "./Validation/ErrorDetailsValidationComponent";
+import { IconValidationComponent } from "./Validation/IconValidationComponent";
+import { ValidationComposer } from "./Validation/ValidationComposer";
+
 
 export class RuleModal extends Modal {
-    private saved = false;
+    private dv: DataviewApi;
+
     private sourcePath: string;
     private withSubfolders: boolean;
     private targetPath: string;
     private filter: DataViewWhereExpression;
 
-    private dv: DataviewApi;
-    private filterStatusEl!: HTMLElement;
-    private preEl!: HTMLElement;
-    private errorDetailsEl!: HTMLDetailsElement;
-    private validate = debounce(this.doValidate.bind(this), 400);
+    private validation: () => void;
+    private validationComposer: ValidationComposer;
+
+    private saved = false;
 
     constructor(
         app: App,
@@ -40,7 +44,8 @@ export class RuleModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
 
-
+        let IconValidationComp: IconValidationComponent;
+        let ErrorDetailsValidationComp: ErrorDetailsValidationComponent;
 
         contentEl.createEl('h2', { text: this.rule ? 'Edit Rule' : 'New Rule' });
 
@@ -95,14 +100,14 @@ export class RuleModal extends Modal {
             .setName('Filter Condition')
             .setHeading();
 
-        new Setting(contentEl)
+        const datavieWhereExpessionSettings = new Setting(contentEl)
             .addTextArea((text) => {
 
                 text.setValue(this.filter)
                     .setPlaceholder('Dataview WHERE condition')
                     .onChange((value) => {
                         this.filter = value as DataViewWhereExpression;
-                        this.validate();
+                        this.validation();
                     });
 
                 const minRowCount = 2
@@ -111,11 +116,12 @@ export class RuleModal extends Modal {
 
                 const dynamicAdjustHeight = () => {
                     const textArea = text.inputEl;
+
                     textArea.style.height = "auto";
-                    // clamp по max‑height из CSS
-                    const maxH = parseFloat(getComputedStyle(textArea).maxHeight);
-                    const newH = Math.min(textArea.scrollHeight, maxH);
-                    textArea.style.height = newH + "px";
+                    const maxHeight = parseFloat(getComputedStyle(textArea).maxHeight);
+                    const newHeight = Math.min(textArea.scrollHeight, maxHeight);
+
+                    textArea.style.height = newHeight + "px";
                 };
                 text.inputEl.addEventListener("input", dynamicAdjustHeight);
                 dynamicAdjustHeight();
@@ -127,25 +133,26 @@ export class RuleModal extends Modal {
                     .onClick(() => {
                         new QueryPreviewModal(this.app, buildMoveQuery(normalizePath(this.sourcePath), this.filter)).open();
                     });
-            })
-            .then((setting) => {
-                this.filterStatusEl = setting.controlEl.createEl("span", {
-                    cls: nm_filter_status,
-                    text: "⏳"
-                });
-                this.doValidate();
-            })
-            .infoEl.remove();
-        
-        this.errorDetailsEl = contentEl.createEl('details', {
-            cls: 'nm-error-details',
-            }) as HTMLDetailsElement;
-            this.errorDetailsEl.style.display = 'none';   // Скрываем по умолчанию
-            this.errorDetailsEl.createEl('summary', { text: 'Show error details' });
-            this.preEl = this.errorDetailsEl.createEl('pre', {
-            cls: 'nm-error-pre',
-            text: '',
             });
+        datavieWhereExpessionSettings.infoEl.remove();
+
+        IconValidationComp = new IconValidationComponent(
+            datavieWhereExpessionSettings.controlEl
+        );
+
+        ErrorDetailsValidationComp = new ErrorDetailsValidationComponent(
+            contentEl
+        );
+
+        this.validationComposer = new ValidationComposer(
+            IconValidationComp,
+            ErrorDetailsValidationComp
+        );
+
+        this.validation = this.validationComposer.wrapValidate(async () => {
+            return await this.dv.tryQuery(
+                buildMoveQuery(normalizePath(this.sourcePath), this.filter));
+        }, 400);
 
         new Setting(contentEl)
             .addButton((btn) => {
@@ -181,6 +188,8 @@ export class RuleModal extends Modal {
                         this.close();
                     });
             });
+
+        this.validation();
     }
 
     onClose() {
@@ -188,40 +197,5 @@ export class RuleModal extends Modal {
         this.contentEl.empty();
     }
 
-    private async doValidate() {
-        if (!this.dv) return this.setValidationState("⚠️ no DV", true);
 
-        try {
-            await this.dv.tryQuery(
-                buildMoveQuery(normalizePath(this.sourcePath), this.filter)
-            );
-            this.setValidationState("✅", false);
-        } catch (e) {
-            log.logError(e);
-            this.setValidationState("❌", true, "Take a look at error details");
-        }
-    }
-
-    private setValidationState(
-        icon: string,
-        isError: boolean,
-        title = ""
-      ): void {
-      
-        // обновляем иконку
-        this.filterStatusEl.setText(icon);
-        this.filterStatusEl.setAttr("title", title);
-      
-        if (isError) {
-          // показываем блок <details>, открываем его и вставляем текст
-          this.errorDetailsEl.style.display = '';     // вернуть дефолтное отображение
-          this.errorDetailsEl.open = true;            // сразу развернуть
-          this.preEl.setText(title);
-        } else {
-          // прячем блок и очищаем текст
-          this.errorDetailsEl.style.display = 'none';
-          this.errorDetailsEl.open = false;
-          this.preEl.setText('');
-        }
-      }
 }

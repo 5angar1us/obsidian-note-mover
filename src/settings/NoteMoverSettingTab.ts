@@ -3,7 +3,7 @@ import NoteMover from "../main";
 import { arrayMove } from "../utilt";
 import { FolderSuggest3 } from "../suggests/folder-suggest3";
 import { Caller, DataViewWhereExpression, ExcludedFolder, FileExcludedFrontMatterEntry, FileExcludedFrontMatterEntryName, getTypedValue, NoteMoverSettings, Rule } from "./settingsTypes";
-import { RuleModal } from "./RuleModal";
+import { RuleModal } from "./RuleModal/RuleModal";
 
 
 export const DEFAULT_SETTINGS: NoteMoverSettings = {
