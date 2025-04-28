@@ -65,6 +65,65 @@ export class RuleModal extends Modal {
             .setName('Filter Condition')
             .setHeading();
         
+        const expandableSection = (title: string, expanded = false) => {
+            const details = contentEl.createEl('details', {
+                attr: expanded ? { open: '' } : {}
+            });
+            details.createEl('summary', { text: title });
+            return details;
+        };
+
+        // Секция документации
+        const docsSection = expandableSection('Documentation');
+        const docsFragment = document.createDocumentFragment();
+
+        docsFragment.append(
+            'For detailed instructions, refer to the ',
+            createEl('a', {
+                text: 'Dataview documentation',
+                href: 'https://blacksmithgu.github.io/obsidian-dataview/'
+            }),
+            '.',
+            'Useful sections include:',
+            createEl('ul', {}, ul => {
+                ul.append(
+                    createEl('li', { text: 'Query Language Reference – for guidance on constructing the WHERE expression.' }),
+                    createEl('li', { text: 'Metadata on Pages – to discover all available metadata fields for your notes.' })
+                );
+            }),
+            createEl('h5', { text: 'Basic examples:' }),
+            createEl('ul', {}, ul => {
+                ul.append(
+                    createEl('li', { text: 'Comparison operators: <, >, <=, >=, =, !=' }),
+                    createEl('li', { text: 'Combine conditions with AND/OR' }),
+                    createEl('li', {}, li => {
+                        li.append(
+                            createEl('code', { text: 'contains(file.tags, "#3done")' }),
+                            ' - check for tag'
+                        );
+                    }),
+                    createEl('li', {}, li => {
+                        li.append(
+                            createEl('code', { text: 'fileClass = "ChatBot Prompt"' }),
+                            ' - check property value'
+                        );
+                    })
+                );
+            }),
+            createEl('h5', { text: 'Function calls:' }),
+            createEl('ul', {}, ul => {
+                ul.append(
+                    createEl('li', {}, li => {
+                        li.append(createEl('code', { text: 'contains(file.name, "WIP")' }));
+                    }),
+                    createEl('li', {}, li => {
+                        li.append(createEl('code', { text: 'string(file.day.year)' }));
+                    })
+                );
+            })
+        );
+
+        docsSection.appendChild(docsFragment);
 
         //
         // Сам textarea WHERE
