@@ -1,6 +1,6 @@
 import { App, ButtonComponent, PluginSettingTab, Setting} from "obsidian";
 import NoteMover from "../main";
-import { arrayMove } from "../utilt";
+import { arraySwap } from "../arraySwap";
 import { FolderSuggest3 } from "../suggests/folder-suggest3";
 import { Caller, DataViewWhereExpression, ExcludedFolder, FileExcludedFrontMatterEntry, FileExcludedFrontMatterEntryName, getTypedValue, NoteMoverSettings, Rule } from "./settingsTypes";
 import { RuleModal } from "./RuleModal/RuleModal";
@@ -137,7 +137,7 @@ export class NoteMoverSettingTab extends PluginSettingTab {
 				cb.setIcon('up-chevron-glyph')
 					.setTooltip('Move up')
 					.onClick(async () => {
-						arrayMove(this.plugin.settings.excludedFolders, index, index - 1);
+						arraySwap(this.plugin.settings.excludedFolders, index, index - 1);
 						await this.plugin.saveSettings();
 						this.display();
 					});
@@ -146,7 +146,7 @@ export class NoteMoverSettingTab extends PluginSettingTab {
 					cb.setIcon('down-chevron-glyph')
 						.setTooltip('Move down')
 						.onClick(async () => {
-							arrayMove(this.plugin.settings.excludedFolders, index, index + 1);
+							arraySwap(this.plugin.settings.excludedFolders, index, index + 1);
 							await this.plugin.saveSettings();
 							this.display();
 						});
@@ -235,7 +235,7 @@ export class NoteMoverSettingTab extends PluginSettingTab {
 				cb.setIcon('up-chevron-glyph')
 					.setTooltip('Move up')
 					.onClick(async () => {
-						arrayMove(this.plugin.settings.rules, index, index - 1);
+						arraySwap(this.plugin.settings.rules, index, index - 1);
 						await this.plugin.saveSettings();
 						this.display();
 					});
@@ -245,7 +245,7 @@ export class NoteMoverSettingTab extends PluginSettingTab {
 				cb.setIcon('down-chevron-glyph')
 					.setTooltip('Move down')
 					.onClick(async () => {
-						arrayMove(this.plugin.settings.rules, index, index + 1);
+						arraySwap(this.plugin.settings.rules, index, index + 1);
 						await this.plugin.saveSettings();
 						this.display();
 					});

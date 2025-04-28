@@ -1,6 +1,10 @@
 
 
-export const arrayMove = <T>(array: T[], fromIndex: number, toIndex: number): void => {
+export function arraySwap<T>(array: T[], fromIndex: number, toIndex: number): void {
+	if (fromIndex < 0 || fromIndex === array.length) {
+		return;
+	}
+
 	if (toIndex < 0 || toIndex === array.length) {
 		return;
 	}
