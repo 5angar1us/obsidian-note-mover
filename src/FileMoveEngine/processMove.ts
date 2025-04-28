@@ -1,9 +1,9 @@
 import { App, parseFrontMatterEntry, TAbstractFile, TFile } from "obsidian";
 
 import { getAPI, DataviewApi } from "obsidian-dataview";
-import { log } from "./logger/CompositeLogger";
-import { Caller, ExcludedFolder, FileExcludedFrontMatterEntry, FileExcludedFrontMatterEntryName, getTypedValue, NoteMoverSettings, Rule, SourceFolder } from "./settings/settingsTypes";
-import { NormalizedPath, normalizePath } from "./strongTypes/normalizePath";
+import { log } from "../logger/CompositeLogger";
+import { Caller, ExcludedFolder, FileExcludedFrontMatterEntry, FileExcludedFrontMatterEntryName, getTypedValue, NoteMoverSettings, Rule, SourceFolder } from "../settings/settingsTypes";
+import { NormalizedPath, normalizePath } from "../strongTypes/normalizePath";
 import { buildMoveQuery } from "./buildQuery";
 
 export type FileCheckFn = (path: string) => TAbstractFile | null;
@@ -72,8 +72,6 @@ export async function processMove(app: App, file: TFile, caller: Caller, setting
             log.logMessage(`id:${file.name} Target path "${targetPathRule}" already contains a file with same name.`);
             continue;
         }
-
-
     }
 
     if (AlreadyInTargetFolder(currentPath, targetPath)) {

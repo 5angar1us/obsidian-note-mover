@@ -1,5 +1,5 @@
-import { DataViewWhereExpression } from "./settings/settingsTypes";
-import { NormalizedPath } from "./strongTypes/normalizePath";
+import { DataViewWhereExpression } from "../settings/settingsTypes";
+import { NormalizedPath } from "../strongTypes/normalizePath";
 
 
 export function buildMoveQuery(fullFilePath: NormalizedPath, whereExpression: DataViewWhereExpression): string {

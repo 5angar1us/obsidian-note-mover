@@ -1,5 +1,5 @@
 import { App, debounce, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
-import { processMove } from './processMove';
+import { processMove } from './FileMoveEngine/processMove';
 import { DEFAULT_SETTINGS, NoteMoverSettingTab } from './settings/NoteMoverSettingTab';
 import { log } from './logger/CompositeLogger';
 import { ErrorLevel } from './logger/consts/errorLevel';
