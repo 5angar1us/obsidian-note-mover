@@ -1,7 +1,7 @@
 import { App, debounce, Modal, Setting } from "obsidian";
 import NoteMover from "src/main";
-import { FolderSuggest3 } from "src/suggests/folder-suggest3";
-import { buildMoveQuery } from "src/buildQuery";
+import { FolderSuggest } from "src/suggests/FolderSuggest";
+import { buildMoveQuery } from "src/FileMoveEngine/buildQuery";
 import { normalizePath } from "src/strongTypes/normalizePath";
 import { DataviewApi, getAPI } from "obsidian-dataview";
 import { log } from "src/logger/CompositeLogger";
@@ -11,6 +11,7 @@ import { DataViewWhereExpression, Rule } from "../settingsTypes";
 import { ErrorDetailsValidationComponent } from "./Validation/ErrorDetailsValidationComponent";
 import { IconValidationComponent } from "./Validation/IconValidationComponent";
 import { ValidationComposer } from "./Validation/ValidationComposer";
+import { MultipleTagSuggest } from "src/suggests/MultipleSuggest";
 
 
 export class RuleModal extends Modal {
@@ -55,7 +56,7 @@ export class RuleModal extends Modal {
 
         new Setting(contentEl)
             .addSearch((search) => {
-                new FolderSuggest3(search.inputEl, this.app);
+                new FolderSuggest(search.inputEl, this.app);
 
                 search.setValue(this.sourcePath)
                     .setPlaceholder('Folder path')
@@ -82,7 +83,7 @@ export class RuleModal extends Modal {
 
         new Setting(contentEl)
             .addSearch((search) => {
-                new FolderSuggest3(search.inputEl, this.app);
+                new FolderSuggest(search.inputEl, this.app);
 
 
                 search.setValue(this.targetPath)

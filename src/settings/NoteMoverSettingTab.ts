@@ -1,7 +1,7 @@
 import { App, ButtonComponent, PluginSettingTab, Setting} from "obsidian";
 import NoteMover from "../main";
 import { arraySwap } from "../arraySwap";
-import { FolderSuggest3 } from "../suggests/folder-suggest3";
+import { FolderSuggest } from "../suggests/FolderSuggest";
 import { Caller, DataViewWhereExpression, ExcludedFolder, FileExcludedFrontMatterEntry, FileExcludedFrontMatterEntryName, getTypedValue, NoteMoverSettings, Rule } from "./settingsTypes";
 import { RuleModal } from "./RuleModal/RuleModal";
 
@@ -114,7 +114,7 @@ export class NoteMoverSettingTab extends PluginSettingTab {
 		this.plugin.settings.excludedFolders.forEach((excluded_folder:ExcludedFolder, index:number) => {
 			const s = new Setting(this.containerEl)
 				.addSearch((cb) => {
-					new FolderSuggest3(cb.inputEl, this.app);
+					new FolderSuggest(cb.inputEl, this.app);
 					cb.setPlaceholder('Folder')
 						.setValue(excluded_folder.path)
 						.onChange(async (newFolder) => {

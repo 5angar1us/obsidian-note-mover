@@ -12,7 +12,7 @@ import { AbstractInputSuggest, App, HoverParent, HoverPopover, prepareFuzzySearc
  * a comma separator.
  * 
  */
-abstract class AddTextSuggest extends AbstractInputSuggest<string> {
+abstract class MultipleTextSuggest extends AbstractInputSuggest<string> {
     content: string[];
     targetMatch = /^(.*),\s*([^,]*)/
 
@@ -88,7 +88,15 @@ abstract class AddTextSuggest extends AbstractInputSuggest<string> {
 
 }
 
-export class FolderSuggest2 extends AddTextSuggest {
+export class MultipleTagSuggest extends MultipleTextSuggest {
+	getContent() {
+		// @ts-ignore - this is an undocumented function...
+		const tagMap:Map<string,any> = this.app.metadataCache.getTags();
+        return Object.keys(tagMap).map((k)=>k.replace("#",""))
+	  }
+}
+
+export class MultipleFolderSuggest extends MultipleTextSuggest {
 	getContent() {
         const folders = this.app.vault.getAllFolders();
       

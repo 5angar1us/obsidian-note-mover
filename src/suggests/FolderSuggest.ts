@@ -1,6 +1,6 @@
 import { AbstractInputSuggest, App } from "obsidian";
 
-export class FolderSuggest3 extends AbstractInputSuggest<string> {
+export class FolderSuggest extends AbstractInputSuggest<string> {
     private folders: string[];
 
     constructor(private inputEl: HTMLInputElement, app: App) {
