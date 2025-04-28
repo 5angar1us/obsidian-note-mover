@@ -23,6 +23,6 @@
 		"obsidian": "latest",
 		"obsidian-dataview": "^0.5.68",
 		"tslib": "2.4.0",
-		"typescript": "4.7.4"
+		"typescript": "^5.8.3"
 	}
 }
