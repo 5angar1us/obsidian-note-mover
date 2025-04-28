@@ -27,6 +27,8 @@ export class RuleModal extends Modal {
 
     private saved = false;
 
+    private tags: string[] = []
+
     constructor(
         app: App,
         private plugin: NoteMover,
@@ -45,73 +47,39 @@ export class RuleModal extends Modal {
         const { contentEl } = this;
         contentEl.empty();
 
-        let IconValidationComp: IconValidationComponent;
-        let ErrorDetailsValidationComp: ErrorDetailsValidationComponent;
-
         contentEl.createEl('h2', { text: this.rule ? 'Edit Rule' : 'New Rule' });
 
-        new Setting(contentEl)
-            .setName('Source Folder')
-            .setHeading();
+        this.addSourceFolderSearch(contentEl);
 
-        new Setting(contentEl)
-            .addSearch((search) => {
-                new FolderSuggest(search.inputEl, this.app);
+        this.addTargetFolderSearch(contentEl);
 
-                search.setValue(this.sourcePath)
-                    .setPlaceholder('Folder path')
-                    .onChange((value) => {
-                        this.sourcePath = value;
-                    });
+        this.filterCondition(contentEl);
 
-                // @ts-ignore
-                search.containerEl.addClass(nmSearch__input);
+        this.setupSaveCancelButtons(contentEl);
 
-            })
-            .addToggle((toggle) => {
-                toggle.setValue(this.withSubfolders)
-                    .setTooltip('Include subfolders')
-                    .onChange((value) => {
-                        this.withSubfolders = value;
-                    });
-            })
-            .infoEl.remove();
+        this.validation();
+    }
 
-        new Setting(contentEl)
-            .setName('Target Folder')
-            .setHeading();
-
-        new Setting(contentEl)
-            .addSearch((search) => {
-                new FolderSuggest(search.inputEl, this.app);
-
-
-                search.setValue(this.targetPath)
-                    .setPlaceholder('Folder path')
-                    .onChange((value) => {
-                        this.targetPath = value;
-                    });
-
-                // @ts-ignore
-                search.containerEl.addClass(nmSearch__input);
-            })
-            .infoEl.remove();
-
+    private filterCondition(contentEl: HTMLElement) {
         new Setting(contentEl)
             .setName('Filter Condition')
             .setHeading();
+        
 
+        //
+        // Сам textarea WHERE
+        //
         const datavieWhereExpessionSettings = new Setting(contentEl)
-            .addTextArea((text) => {
-
-                text.setValue(this.filter)
+            .addTextArea(text => {
+                text
+                    .setValue(this.filter)
                     .setPlaceholder('Dataview WHERE condition')
                     .onChange((value) => {
                         this.filter = value as DataViewWhereExpression;
                         this.validation();
                     });
 
-                const minRowCount = 2
+                const minRowCount = 2;
                 text.inputEl.rows = minRowCount;
                 text.inputEl.classList.add(nmDatawiewWhereExpession__input);
 
@@ -127,34 +95,39 @@ export class RuleModal extends Modal {
                 text.inputEl.addEventListener("input", dynamicAdjustHeight);
                 dynamicAdjustHeight();
             })
-
-            .addButton((btn) => {
+            .addButton(btn => {
                 btn.setIcon("eye")
                     .setTooltip("Show the full Dataview request")
                     .onClick(() => {
-                        new QueryPreviewModal(this.app, buildMoveQuery(normalizePath(this.sourcePath), this.filter)).open();
+                        new QueryPreviewModal(
+                            this.app,
+                            buildMoveQuery(normalizePath(this.sourcePath), this.filter)
+                        ).open();
                     });
             });
+
+
         datavieWhereExpessionSettings.infoEl.remove();
 
-        IconValidationComp = new IconValidationComponent(
+        // инициализация валидаторов (без изменений)…
+        const IconValidationComp = new IconValidationComponent(
             datavieWhereExpessionSettings.controlEl
         );
-
-        ErrorDetailsValidationComp = new ErrorDetailsValidationComponent(
+        const ErrorDetailsValidationComp = new ErrorDetailsValidationComponent(
             contentEl
         );
-
         this.validationComposer = new ValidationComposer(
             IconValidationComp,
             ErrorDetailsValidationComp
         );
-
         this.validation = this.validationComposer.wrapValidate(async () => {
             return await this.dv.tryQuery(
-                buildMoveQuery(normalizePath(this.sourcePath), this.filter));
+                buildMoveQuery(normalizePath(this.sourcePath), this.filter)
+            );
         }, 400);
+    }
 
+    private setupSaveCancelButtons(contentEl: HTMLElement) {
         new Setting(contentEl)
             .addButton((btn) => {
                 btn.setButtonText('Save')
@@ -189,8 +162,57 @@ export class RuleModal extends Modal {
                         this.close();
                     });
             });
+    }
 
-        this.validation();
+    private addTargetFolderSearch(contentEl: HTMLElement) {
+        new Setting(contentEl)
+            .setName('Target Folder')
+            .setHeading();
+
+        new Setting(contentEl)
+            .addSearch((search) => {
+                new FolderSuggest(search.inputEl, this.app);
+
+
+                search.setValue(this.targetPath)
+                    .setPlaceholder('Folder path')
+                    .onChange((value) => {
+                        this.targetPath = value;
+                    });
+
+                // @ts-ignore
+                search.containerEl.addClass(nmSearch__input);
+            })
+            .infoEl.remove();
+    }
+
+    private addSourceFolderSearch(contentEl: HTMLElement) {
+        new Setting(contentEl)
+            .setName('Source Folder')
+            .setHeading();
+
+        new Setting(contentEl)
+            .addSearch((search) => {
+                new FolderSuggest(search.inputEl, this.app);
+
+                search.setValue(this.sourcePath)
+                    .setPlaceholder('Folder path')
+                    .onChange((value) => {
+                        this.sourcePath = value;
+                    });
+
+                // @ts-ignore
+                search.containerEl.addClass(nmSearch__input);
+
+            })
+            .addToggle((toggle) => {
+                toggle.setValue(this.withSubfolders)
+                    .setTooltip('Include subfolders')
+                    .onChange((value) => {
+                        this.withSubfolders = value;
+                    });
+            })
+            .infoEl.remove();
     }
 
     onClose() {
