@@ -43,10 +43,13 @@ export async function processMove(app: App, file: TFile, caller: Caller, setting
 
     log.logMessage(`id:${file.name} Rule check initiated`);
 
+    const currentPath = normalizePath(file.path);
+    let targetPath = currentPath;
+
     for (const rule of settings.rules) {
 
-        const currentPath = normalizePath(file.path);
-        const targetPath = normalizePath(`${rule.targetFolder.path}/${fileFullName}`);
+
+        const targetPathRule = normalizePath(`${rule.targetFolder.path}/${fileFullName}`);
 
         const parentFolder = file.parent!; // The file will have the parent folder "/" at the root.
 
@@ -59,25 +62,31 @@ export async function processMove(app: App, file: TFile, caller: Caller, setting
         if (!isFileFollowsRule)
             continue;
 
-        if (AlreadyInTargetFolder(currentPath, targetPath)) {
+        if (AlreadyInTargetFolder(currentPath, targetPathRule)) {
             log.logMessage(`id:${file.name} A file already in target directory.`);
             continue;
         }
 
-        const existingFile = getAbstractFileFn(targetPath);
+        const existingFile = getAbstractFileFn(targetPathRule);
         if (existingFile instanceof TFile) {
-            log.logMessage(`id:${file.name} Target path "${targetPath}" already contains a file with same name.`);
+            log.logMessage(`id:${file.name} Target path "${targetPathRule}" already contains a file with same name.`);
             continue;
         }
 
-        try {
-            isfileMoved = true;
-            await renameFileFn(file, targetPath);
 
-            log.logMessage(`id:${file.name} Moved the note "${fileFullName}" to "${rule.targetFolder}".`)
-        } catch (error) {
-            log.logError(`id:${file.name} Failed to move file. Error: ${error}`);
-        }
+    }
+
+    if (AlreadyInTargetFolder(currentPath, targetPath)) {
+        return isfileMoved;
+    }
+
+    try {
+        isfileMoved = true;
+        await renameFileFn(file, targetPath);
+
+        log.logMessage(`id:${file.name} Moved the note "${fileFullName}" to "${targetPath}".`)
+    } catch (error) {
+        log.logError(`id:${file.name} Failed to move file. Error: ${error}`);
     }
 
     return isfileMoved;
@@ -96,7 +105,7 @@ function FileInSourceFolder(parentFolderPath: NormalizedPath, sourceFolderPath: 
 async function FileFollowsRule(dataviewApi: DataviewApi, rule: Rule, file: TFile) {
 
     const fullFilePath = normalizePath(file.path);
-    
+
     let query = buildMoveQuery(fullFilePath, rule.filter)
     log.logMessage(`id:${file.name} query:${query}`)
 
