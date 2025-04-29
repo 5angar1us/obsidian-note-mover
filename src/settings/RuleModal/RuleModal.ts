@@ -1,17 +1,20 @@
-import { App, debounce, Modal, Setting } from "obsidian";
-import NoteMover from "src/main";
-import { FolderSuggest } from "src/suggests/FolderSuggest";
-import { buildMoveQuery } from "src/FileMoveEngine/buildQuery";
-import { normalizePath } from "src/strongTypes/normalizePath";
+import { App, ButtonComponent, debounce, Modal, Notice, Setting } from "obsidian";
 import { DataviewApi, getAPI } from "obsidian-dataview";
-import { log } from "src/logger/CompositeLogger";
-import { nm_filter_status, nmDatawiewWhereExpession__input, nmSearch__input } from "src/cssConsts";
-import { QueryPreviewModal } from "../QueryPreviewModal";
-import { DataViewWhereExpression, Rule } from "../settingsTypes";
+import { QueryPreviewModal } from "./../QueryPreviewModal";
+import { DataViewWhereExpression, Rule } from "./../settingsTypes";
 import { ErrorDetailsValidationComponent } from "./Validation/ErrorDetailsValidationComponent";
 import { IconValidationComponent } from "./Validation/IconValidationComponent";
 import { ValidationComposer } from "./Validation/ValidationComposer";
+
+import { nmDatawiewWhereExpession__input, nmSearch__input } from "src/cssConsts";
+import { buildMoveQuery } from "src/FileMoveEngine/buildQuery";
+import NoteMover from "src/main";
+import { FolderSuggest } from "src/suggests/FolderSuggest";
 import { MultipleTagSuggest } from "src/suggests/MultipleSuggest";
+import { PropertyKeySuggest } from "src/suggests/PropertySuggest";
+import { PropertyValueSuggest } from "src/suggests/PropertyValueSuggest";
+import { normalizePath } from "src/strongTypes/normalizePath";
+
 
 
 export class RuleModal extends Modal {
@@ -126,6 +129,122 @@ export class RuleModal extends Modal {
         docsSection.appendChild(docsFragment);
 
         //
+        // Tag Search Section
+        //
+        const tagsSearchSection = expandableSection('Tag Search');
+        new Setting(tagsSearchSection)
+            .setName('Search Tags')
+            .addSearch(search => {
+                new MultipleTagSuggest(search.inputEl, this.app);
+                search
+                    .setPlaceholder('Enter tag to search')
+                    .onChange((value) => {
+                        const t = value.split(',')
+                            .map(tag => tag.trim())
+                            .filter(tag => tag);
+
+                        this.tags = t;
+                    })
+
+            })
+            .addExtraButton(btn =>
+                btn.setIcon('code')
+                    .setTooltip('Copy as query snippet')
+                    .onClick(async () => {
+                        const snippet = this.tags
+                            .map(tag => `contains(file.tags, "${tag}")`)
+                            .join(' AND ');
+                        try {
+                            await navigator.clipboard.writeText(snippet);
+                            this.showConfirmation();
+                        } catch (err) {
+                            console.error('Copy error:', err);
+                        }
+                    }))
+            .addExtraButton(btn =>
+                btn.setIcon('documents')
+                    .setTooltip('Copy as plain text')
+                    .onClick(async () => {
+                        const formattedTags = this.tags.join(',');
+                        try {
+                            await navigator.clipboard.writeText(formattedTags);
+                            this.showConfirmation();
+                        } catch (err) {
+                            console.error('Copy error:', err);
+                        }
+                    }))
+
+        //
+        // Property Search Section
+        //
+        const propsSearchSection = expandableSection('Property Search');
+        let propKey = '';
+        let propVal = '';
+        let valueSuggest: PropertyValueSuggest | null = null;
+        let keyInputEl: HTMLInputElement | null = null;
+        let valueInputEl: HTMLInputElement | null = null;
+
+        new Setting(propsSearchSection)
+            .setName('Search Properties')
+            // input property key
+            .addSearch(search => {
+                keyInputEl = search.inputEl;
+                new PropertyKeySuggest(search.inputEl, this.app);
+                search
+                    .setPlaceholder('Enter property to search')
+                    .onChange((value) => {
+                        propKey = value.trim();
+                        if (valueSuggest) {
+                            valueSuggest.setProperty(propKey);
+                        }
+                    });
+            })
+            // input property value
+            .addSearch(search => {
+                valueInputEl = search.inputEl;
+                valueSuggest = new PropertyValueSuggest(search.inputEl, this.app, getAPI(this.app), propKey);
+                search
+                    .setPlaceholder('Enter value to search')
+                    .onChange((value) => {
+                        propVal = value.trim();
+
+
+                    });
+            })
+            .addExtraButton(btn =>
+                btn.setIcon('code')
+                    .setTooltip('Copy as query snippet')
+                    .onClick(async () => {
+
+                        if (propKey.trim() !== "" && propVal.trim() !== "") return;
+
+                        const formatted = `${propKey} = "${propVal}"`
+                        try {
+                            await navigator.clipboard.writeText(formatted);
+                            this.showConfirmation();
+                        } catch (err) {
+                            console.error('Copy error:', err);
+                        }
+                    })
+            ).addExtraButton(btn => {
+                btn.setIcon('trash')
+                    .setTooltip('Clear fields')
+                    .onClick(() => {
+                        if (keyInputEl) {
+                            keyInputEl.value = '';
+                        }
+                        if (valueInputEl) {
+                            valueInputEl.value = '';
+                        }
+                        propKey = '';
+                        propVal = '';
+                        if (valueSuggest) {
+                            valueSuggest.setProperty('');
+                        }
+                    });
+            });
+
+        //
         // Сам textarea WHERE
         //
         const datavieWhereExpessionSettings = new Setting(contentEl)
@@ -168,7 +287,6 @@ export class RuleModal extends Modal {
 
         datavieWhereExpessionSettings.infoEl.remove();
 
-        // инициализация валидаторов (без изменений)…
         const IconValidationComp = new IconValidationComponent(
             datavieWhereExpessionSettings.controlEl
         );
@@ -279,5 +397,7 @@ export class RuleModal extends Modal {
         this.contentEl.empty();
     }
 
-
+    private showConfirmation() {
+        new Notice('Copied!')
+    }
 }
