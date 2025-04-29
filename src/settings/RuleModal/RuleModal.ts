@@ -216,7 +216,7 @@ export class RuleModal extends Modal {
                     .setTooltip('Copy as query snippet')
                     .onClick(async () => {
 
-                        if (propKey.trim() !== "" && propVal.trim() !== "") return;
+                        if (propKey.trim() == "" && propVal.trim() == "") return;
 
                         const formatted = `${propKey} = "${propVal}"`
                         try {
