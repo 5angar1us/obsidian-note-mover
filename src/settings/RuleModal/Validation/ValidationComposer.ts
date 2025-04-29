@@ -8,7 +8,7 @@ export class ValidationComposer {
         private errorComponent: ErrorDetailsValidationComponent
     ) {}
 
-    public wrapValidate(fn: () => Promise<void>, wait = 400): () => void {
+    public wrapValidate<T>(fn: () => Promise<T>, wait = 400): () => void {
         return debounce(async () => {
             this.iconComponent.setPending();
             this.errorComponent.setPending();
