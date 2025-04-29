@@ -89,11 +89,13 @@ abstract class MultipleTextSuggest extends AbstractInputSuggest<string> {
 }
 
 export class MultipleTagSuggest extends MultipleTextSuggest {
-	getContent() {
-		// @ts-ignore - this is an undocumented function...
-		const tagMap:Map<string,any> = this.app.metadataCache.getTags();
-        return Object.keys(tagMap).map((k)=>k.replace("#",""))
-	  }
+    getContent() {
+        // this is an undocumented function...
+        // https://github.com/Fevol/obsidian-typings/blob/14d1b3f7fc0f6d167a9721a0f60a14ba4815fee8/src/obsidian/augmentations/MetadataCache.d.ts#L338
+        // @ts-ignore
+        const tagMap = this.app.metadataCache.getTags() as Record<string, number>;
+        return Object.keys(tagMap).map((k) => k.replace("#", ""));
+    }
 }
 
 export class MultipleFolderSuggest extends MultipleTextSuggest {
