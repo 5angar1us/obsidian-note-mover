@@ -1,5 +1,10 @@
 {
   "compilerOptions": {
+    "paths": {
+      "obsidian-dataview": [
+        "./node_modules/obsidian-dataview/lib/index"
+      ]
+    },
     "baseUrl": ".",
     "inlineSourceMap": true,
     "inlineSources": true,
@@ -18,5 +23,5 @@
       "ES7"
     ]
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*"]
 }
